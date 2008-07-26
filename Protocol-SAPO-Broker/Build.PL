@@ -9,6 +9,7 @@ my $builder = Module::Build->new(
     dist_version_from   => 'lib/Protocol/SAPO/Broker.pm',
     build_requires => {
         'Test::More' => 0,
+        'Carp::Clan' => 0,
     },
     add_to_cleanup      => [ 'Protocol-SAPO-Broker-*' ],
     create_makefile_pl => 'traditional',

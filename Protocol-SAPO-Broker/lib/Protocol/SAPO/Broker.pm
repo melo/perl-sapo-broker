@@ -2,6 +2,7 @@ package Protocol::SAPO::Broker;
 
 use warnings;
 use strict;
+use Carp::Clan qw(Protocol::SAPO::Broker);
 
 our $VERSION = '0.01';
 
