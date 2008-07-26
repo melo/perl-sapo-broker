@@ -48,6 +48,18 @@ sub connect {
 }
 
 
+### Client reporting methods
+
+sub connected {
+  my ($self, $info) = @_;
+  
+  $self->_set_state('connected');
+  $self->{info} = $info;
+  
+  $self->_optional_callback('connected', $info);
+}
+
+
 ### State machine
 
 sub _set_state {
@@ -82,7 +94,7 @@ sub _optional_callback {
 sub state { return $_[0]{state} }
 sub host  { return $_[0]{host}  }
 sub port  { return $_[0]{port}  }
-
+sub info  { return $_[0]{info}  }
 
 =head1 NAME
 
