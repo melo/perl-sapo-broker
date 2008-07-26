@@ -62,8 +62,16 @@ sub _set_state {
 sub _callback {
   my ($self, $tag, @args) = @_;
   
+  croak("Missing callback '$tag', ") unless $self->{cb}{$tag};
+
+  return $self->_optional_callback($tag, @args);
+}
+
+sub _optional_callback {
+  my ($self, $tag, @args) = @_;
+  
   my $cb = $self->{cb}{$tag};
-  croak("Missing callback '$tag', ") unless $cb && ref($cb) eq 'CODE';
+  return unless $cb;
 
   return $cb->($self, @args);
 }
