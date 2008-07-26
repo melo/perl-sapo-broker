@@ -5,6 +5,40 @@ use strict;
 
 our $VERSION = '0.01';
 
+sub new {
+  my ($class, $args) = @_;
+  $args ||= {};
+  
+  # Agent location
+  my $host = $args->{host} || '127.0.0.1';
+  my $port = $args->{port} || 3322;
+  
+  # Auto-connect flags
+  my $auto_conn = exists $args->{auto_connect}? $args->{auto_connect} : 1;
+  
+  # Create protocol state machine
+  my $self = bless {
+    state     => 'idle',
+    host      => $host,
+    port      => $port,
+    auto_conn => $auto_conn,
+  }, $class;
+  
+  # Do auto-connect if asked for
+  $self->connect() if $auto_conn;
+  
+  return $self;
+}
+
+
+sub connect {}
+
+
+### Accessors
+
+sub state { return $_[0]{state} }
+sub host  { return $_[0]{host}  }
+sub port  { return $_[0]{port}  }
 
 
 =head1 NAME
