@@ -17,12 +17,20 @@ sub new {
   # Auto-connect flags
   my $auto_conn = exists $args->{auto_connect}? $args->{auto_connect} : 1;
   
+  # extract callbacks
+  my %cbs;
+  while (my ($k, $v) = each %$args) {
+    next unless $k =~ m/^on_(.+)/;
+    $cbs{$1} = $v;
+  }
+  
   # Create protocol state machine
   my $self = bless {
     state     => 'idle',
     host      => $host,
     port      => $port,
     auto_conn => $auto_conn,
+    cb        => \%cbs,
   }, $class;
   
   # Do auto-connect if asked for
@@ -32,7 +40,33 @@ sub new {
 }
 
 
-sub connect {}
+sub connect {
+  my ($self) = @_;
+
+  $self->_set_state('connecting');  
+  $self->_callback('connect', $self->{host}, $self->{port});
+}
+
+
+### State machine
+
+sub _set_state {
+  my ($self, $new_state) = @_;
+  
+  $self->{state} = $new_state;
+}
+
+
+### Callback logic
+
+sub _callback {
+  my ($self, $tag, @args) = @_;
+  
+  my $cb = $self->{cb}{$tag};
+  croak("Missing callback '$tag', ") unless $cb && ref($cb) eq 'CODE';
+
+  return $cb->($self, @args);
+}
 
 
 ### Accessors
