@@ -3,6 +3,9 @@ package Net::SAPO::Broker;
 use warnings;
 use strict;
 
+our $VERSION = '0.01';
+
+
 =head1 NAME
 
 Net::SAPO::Broker - The great new Net::SAPO::Broker!
@@ -10,10 +13,6 @@ Net::SAPO::Broker - The great new Net::SAPO::Broker!
 =head1 VERSION
 
 Version 0.01
-
-=cut
-
-our $VERSION = '0.01';
 
 
 =head1 SYNOPSIS
@@ -33,20 +32,6 @@ A list of functions that can be exported.  You can delete this section
 if you don't export anything, such as for a purely object-oriented module.
 
 =head1 FUNCTIONS
-
-=head2 function1
-
-=cut
-
-sub function1 {
-}
-
-=head2 function2
-
-=cut
-
-sub function2 {
-}
 
 =head1 AUTHOR
 
