@@ -2,8 +2,44 @@ package Net::SAPO::Broker;
 
 use warnings;
 use strict;
+use Protocol::SAPO::Broker;
+use IO::Socket::INET;
 
 our $VERSION = '0.01';
+
+sub new {
+  my ($class, $args) = @_;
+  my $self = bless {}, $class;
+
+  $args ||= {};
+  $args->{on_connect} = sub { $self->_do_connect(@_) };
+  
+  $self->{psb} = Protocol::SAPO::Broker->new($args);
+  
+  return $self;
+}
+
+sub state { return $_[0]{psb}->state }
+
+sub _do_connect {
+  my ($self, $sbp, $host, $port) = @_;
+  
+  my $sock = IO::Socket::INET->new(
+    PeerHost => $host,
+    PeerPort => $port,
+    Proto    => 'tcp',
+    Blocking => 1,
+  );
+  
+  if (!$sock) {
+    $sbp->connect_failed($!);
+    return;
+  }
+  
+  $sbp->connected($sock);
+  
+  return;
+}
 
 
 =head1 NAME
