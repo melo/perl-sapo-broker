@@ -55,8 +55,20 @@ sub connected {
   
   $self->_set_state('connected');
   $self->{info} = $info;
+  delete $self->{error};
   
   $self->_optional_callback('connected', $info);
+}
+
+sub connect_failed {
+  my ($self, $error) = @_;
+  
+  $self->{error} = $error;
+  $self->_set_state('connect_error');
+  
+  $self->_optional_callback('connect_error', $error);
+  
+  $self->_set_state('idle');
 }
 
 
@@ -95,6 +107,7 @@ sub state { return $_[0]{state} }
 sub host  { return $_[0]{host}  }
 sub port  { return $_[0]{port}  }
 sub info  { return $_[0]{info}  }
+sub error { return $_[0]{error} }
 
 =head1 NAME
 
