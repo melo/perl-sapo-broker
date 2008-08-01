@@ -75,10 +75,20 @@ sub connect_failed {
   
   $self->{error} = $error;
   $self->_set_state('connect_error');
-  
   $self->_optional_callback('connect_error', $error);
   
   $self->_set_state('idle');
+}
+
+sub write_error {
+  my ($self, $error) = @_;
+
+  $self->{error} = $error;
+  $self->_set_state('write_error');
+  
+  $self->_optional_callback('write_error', $error);
+
+  $self->disconnect;  
 }
 
 
