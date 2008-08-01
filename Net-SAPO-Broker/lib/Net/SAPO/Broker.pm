@@ -13,13 +13,31 @@ sub new {
 
   $args ||= {};
   $args->{on_connect} = sub { $self->_do_connect(@_) };
+  $args->{on_send}    = sub { $self->_do_send(@_)    };
   
   $self->{psb} = Protocol::SAPO::Broker->new($args);
   
   return $self;
 }
 
+### API
+
 sub state { return $_[0]{psb}->state }
+
+sub connect {
+  my $self = shift;
+  
+  return $self->{psb}->connect(@_);
+}
+
+sub publish {
+  my $self = shift;
+  
+  return $self->{psb}->publish(@_);
+}
+
+
+### Hooks
 
 sub _do_connect {
   my ($self, $sbp, $host, $port) = @_;
@@ -39,6 +57,27 @@ sub _do_connect {
   $sbp->connected($sock);
   
   return;
+}
+
+sub _do_send {
+  my ($self, $sbp, $sock, $msg) = @_;
+  my $status = 0; # 0 == OK, I'm an optimist
+  
+  while(1) {
+    Carp::confess('wtf, no sock?') unless $sock;
+    my $r = $sock->syswrite($msg);
+    last if $r && $r == length($msg);
+    
+    if (! defined($r)) {
+      $sbp->write_error($!);
+      $status = $!;
+      last;
+    }
+    
+    $msg = substr($msg, $r);
+  }
+  
+  return $status;
 }
 
 
