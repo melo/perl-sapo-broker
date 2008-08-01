@@ -73,7 +73,7 @@ sub connected {
 sub connect_failed {
   my ($self, $error) = @_;
   
-  $self->{error} = $error;
+  $self->_set_error($error);
   $self->_set_state('connect_error');
   $self->_optional_callback('connect_error', $error);
   
@@ -98,6 +98,15 @@ sub _set_state {
   my ($self, $new_state) = @_;
   
   $self->{state} = $new_state;
+}
+
+
+### Error handling
+
+sub _set_error {
+  my ($self, $err) = @_;
+  
+  return $self->{error} = $! = $err;
 }
 
 
