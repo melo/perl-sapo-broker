@@ -3,6 +3,7 @@ package Protocol::SAPO::Broker;
 use warnings;
 use strict;
 use Carp::Clan qw(Protocol::SAPO::Broker);
+use Errno qw( ENOTCONN );
 
 our $VERSION = '0.01';
 
@@ -57,6 +58,42 @@ sub disconnect {
   $self->_set_state('idle');
   
   return;
+}
+
+
+### SAPO Broker API
+
+sub publish {
+  my ($self, $args) = @_;
+  
+  croak("Missing required parameter 'topic', ")
+    unless $args->{topic};
+  croak("Missing required parameter 'payload', ")
+    unless exists $args->{payload};
+
+  return $self->_send_message($args);
+}
+
+
+### Protocol: SOAP Messages
+
+sub _send_message {
+  my ($self, $args) = @_;
+  
+  return $self->_set_error(ENOTCONN) if $self->state ne 'connected';
+  
+  my $soap_msg = q{<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>}
+               . q{<Publish xmlns="http://services.sapo.pt/broker"><BrokerMessage>}
+               . qq{<DestinationName>$args->{topic}</DestinationName>}
+               . q{<TextPayload>}
+               . _exml($args->{payload})
+               . q{</TextPayload>}
+               . qq{</BrokerMessage></Publish>}
+               . q{</s:Body></s:Envelope>};
+
+  substr( $soap_msg, 0, 0 ) = pack( 'N', length($soap_msg) );
+  
+  return $self->_callback('send', $self->{info}, $soap_msg);
 }
 
 
