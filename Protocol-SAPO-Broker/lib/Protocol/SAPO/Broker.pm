@@ -44,7 +44,7 @@ sub connect {
   my ($self) = @_;
 
   $self->_set_state('connecting');  
-  $self->_callback('connect', $self->{host}, $self->{port});
+  return $self->_callback('connect', $self->{host}, $self->{port});
 }
 
 sub disconnect {
@@ -55,6 +55,8 @@ sub disconnect {
   
   delete $self->{info};
   $self->_set_state('idle');
+  
+  return;
 }
 
 
@@ -67,7 +69,7 @@ sub connected {
   $self->{info} = $info;
   delete $self->{error};
   
-  $self->_optional_callback('connected', $info);
+  return $self->_optional_callback('connected', $info);
 }
 
 sub connect_failed {
@@ -78,6 +80,8 @@ sub connect_failed {
   $self->_optional_callback('connect_error', $error);
   
   $self->_set_state('idle');
+  
+  return;
 }
 
 sub write_error {
@@ -88,7 +92,7 @@ sub write_error {
   
   $self->_optional_callback('write_error', $error);
 
-  $self->disconnect;  
+  return $self->disconnect;  
 }
 
 
