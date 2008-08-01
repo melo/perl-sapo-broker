@@ -47,6 +47,16 @@ sub connect {
   $self->_callback('connect', $self->{host}, $self->{port});
 }
 
+sub disconnect {
+  my ($self) = @_;
+
+  $self->_set_state('disconnecting');  
+  $self->_optional_callback('disconnect', $self->{info});
+  
+  delete $self->{info};
+  $self->_set_state('idle');
+}
+
 
 ### Client reporting methods
 
