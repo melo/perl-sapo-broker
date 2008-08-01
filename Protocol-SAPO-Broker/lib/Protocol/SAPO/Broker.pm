@@ -138,6 +138,22 @@ sub port  { return $_[0]{port}  }
 sub info  { return $_[0]{info}  }
 sub error { return $_[0]{error} }
 
+
+### XML utils
+
+sub _exml {
+  my $x = shift;
+  
+  return $x unless $x;
+  
+  $x =~ s/&/&amp;/g;
+  $x =~ s/</&lt;/g;
+  $x =~ s/>/&gt;/g;
+  
+  return $x;
+}
+
+
 =head1 NAME
 
 Protocol::SAPO::Broker - The great new Protocol::SAPO::Broker!
