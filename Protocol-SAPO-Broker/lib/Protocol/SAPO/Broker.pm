@@ -41,6 +41,8 @@ sub new {
 }
 
 
+### SAPO Broker API
+
 sub connect {
   my ($self) = @_;
 
@@ -59,9 +61,6 @@ sub disconnect {
   
   return;
 }
-
-
-### SAPO Broker API
 
 sub publish {
   my ($self, $args) = @_;
