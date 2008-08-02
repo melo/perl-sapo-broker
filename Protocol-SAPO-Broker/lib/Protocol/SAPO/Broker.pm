@@ -78,6 +78,28 @@ sub publish {
   });
 }
 
+sub subscribe {
+  my ($self, $args) = @_;
+
+  croak("Missing required parameter 'topic', ")
+    unless $args->{topic};
+  croak("Missing valid parameter 'as_queue', ")
+    if exists $args->{as_queue} && !$args->{as_queue};
+
+  my $dest_name = $args->{topic};
+  my $dest_type = 'TOPIC';
+  if (my $queue_name = $args->{as_queue}) {
+    $dest_name = "$queue_name\@$dest_name";
+    $dest_type = 'TOPIC_AS_QUEUE';
+  }
+  
+  return $self->_send_message({
+    mesg      => 'Notify',
+    dest_name => $dest_name,
+    dest_type => $dest_type,
+  });
+}
+
 
 ### Protocol: SOAP Messages
 
