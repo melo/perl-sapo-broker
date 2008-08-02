@@ -146,8 +146,8 @@ sub connected {
   my ($self, $info) = @_;
   
   $self->_set_state('connected');
+  $self->_set_error(undef);
   $self->{info} = $info;
-  delete $self->{error};
   
   return $self->_optional_callback('connected', $info);
 }
@@ -167,7 +167,7 @@ sub connect_failed {
 sub write_error {
   my ($self, $error) = @_;
 
-  $self->{error} = $error;
+  $self->_set_error($error);
   $self->_set_state('write_error');
   
   $self->_optional_callback('write_error', $error);
@@ -190,6 +190,7 @@ sub _set_state {
 sub _set_error {
   my ($self, $err) = @_;
   
+  return delete($self->{error}) unless defined $err;
   return $self->{error} = $! = $err;
 }
 
