@@ -71,7 +71,11 @@ sub publish {
   croak("Missing required parameter 'payload', ")
     unless exists $args->{payload};
 
-  return $self->_send_message($args);
+  return $self->_send_message({
+    mesg      => 'Publish',
+    dest_name => $args->{topic},
+    payload   => $args->{payload},
+  });
 }
 
 
@@ -82,15 +86,33 @@ sub _send_message {
   
   return $self->_set_error(ENOTCONN) if $self->state ne 'connected';
   
-  my $soap_msg = q{<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>}
-               . q{<Publish xmlns="http://services.sapo.pt/broker"><BrokerMessage>}
-               . qq{<DestinationName>$args->{topic}</DestinationName>}
-               . q{<TextPayload>}
-               . _exml($args->{payload})
-               . q{</TextPayload>}
-               . qq{</BrokerMessage></Publish>}
-               . q{</s:Body></s:Envelope>};
+  # message header
+  my $soap_msg
+    = q{<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>}
+    . qq{<$args->{mesg} xmlns="http://services.sapo.pt/broker"><BrokerMessage>};
+  
+  # Order of the nodes is import! Specified as a SEQUENCE-OF in the WSDL
+  
+  # Deal with destination name and type
+  $soap_msg .= qq{<DestinationName>$args->{dest_name}</DestinationName>}
+    if $args->{dest_name};
+  $soap_msg .= qq{<DestinationType>$args->{dest_type}</DestinationType>}
+    if $args->{dest_type};
 
+  # text payload, make sure proper XML encoding
+  if (exists $args->{payload}) {
+    $soap_msg 
+      .= q{<TextPayload>}
+      .  _exml($args->{payload} || '')
+      .  q{</TextPayload>};
+  }
+  
+  # message trailer
+  $soap_msg
+    .= qq{</BrokerMessage></$args->{mesg}>}
+    .  q{</s:Body></s:Envelope>};
+
+  # wire-level frame: lenght prefix + payload
   substr( $soap_msg, 0, 0 ) = pack( 'N', length($soap_msg) );
   
   return $self->_callback('send', $self->{info}, $soap_msg);
