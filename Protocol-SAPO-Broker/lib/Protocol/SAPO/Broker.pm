@@ -55,8 +55,10 @@ sub disconnect {
 
   $self->_set_state('disconnecting');  
   $self->_optional_callback('disconnect', $self->{info});
-  
-  delete $self->{info};
+
+  foreach my $field (qw( info expect buffer frame_length )) {
+    delete $self->{$field};
+  }
   $self->_set_state('idle');
   
   return;
@@ -139,8 +141,14 @@ sub _send_message {
   return $self->_callback('send', $self->{info}, $soap_msg);
 }
 
+sub _receive_message {
+  my ($self, $payload) = @_;
+  
+  return $self->_callback('message', $payload);
+}
 
-### Client reporting methods
+
+### Implementation reporting methods
 
 sub connected {
   my ($self, $info) = @_;
@@ -148,6 +156,8 @@ sub connected {
   $self->_set_state('connected');
   $self->_set_error(undef);
   $self->{info} = $info;
+  $self->{buffer} = '';
+  $self->{expect} = 0; # N=0 - expects new frame, N > 0 expects N bytes of frame
   
   return $self->_optional_callback('connected', $info);
 }
@@ -160,6 +170,45 @@ sub connect_failed {
   $self->_optional_callback('connect_error', $error);
   
   $self->_set_state('idle');
+  
+  return;
+}
+
+sub incoming_data {
+  my ($self, $data) = @_;
+  
+  # TODO: deal with data == undef => EOF
+  
+  croak("Cannot give me incoming data when state is not 'connected', ")
+    unless $self->{state} eq 'connected';
+  
+  my $buf = $self->{buffer} .= $data;
+  my $exp = $self->{expect};
+  my $nfl = $self->{frame_length};
+  my $lbf = length($buf);
+  
+  # Slice multiple frames, until we run out of data
+  while (1) {
+    if (!$exp) { # expecting 4 bytes for payload size
+      last unless $lbf > 4;
+      
+      $nfl = $exp = unpack('N', substr($buf, 0, 4, ''));
+      $lbf -= 4;
+    }
+    else { # Expecting payload of size $exp
+      $exp = $nfl - $lbf;
+      last if $exp > 0; # not enough data
+
+      my $payload = substr($buf, 0, $nfl, '');
+      $lbf -= $nfl;
+      $exp = $nfl = 0;
+      $self->_receive_message($payload);
+    }
+  }
+  
+  $self->{buffer} = $buf;
+  $self->{expect} = $exp;
+  $self->{frame_length} = $nfl;
   
   return;
 }
@@ -217,11 +266,14 @@ sub _optional_callback {
 
 ### Accessors
 
-sub state { return $_[0]{state} }
-sub host  { return $_[0]{host}  }
-sub port  { return $_[0]{port}  }
-sub info  { return $_[0]{info}  }
-sub error { return $_[0]{error} }
+sub state  { return $_[0]{state} }
+sub host   { return $_[0]{host}  }
+sub port   { return $_[0]{port}  }
+sub info   { return $_[0]{info}  }
+sub error  { return $_[0]{error} }
+sub expect { return $_[0]{expect} }
+sub buffer { return $_[0]{buffer} }
+
 
 
 ### XML utils
