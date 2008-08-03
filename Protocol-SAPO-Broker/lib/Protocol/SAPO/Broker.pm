@@ -4,6 +4,8 @@ use warnings;
 use strict;
 use Carp::Clan qw(Protocol::SAPO::Broker);
 use Errno qw( ENOTCONN );
+use XML::LibXML;
+use XML::LibXML::XPathContext;
 
 our $VERSION = '0.01';
 
@@ -289,6 +291,16 @@ sub _exml {
   $x =~ s/>/&gt;/g;
   
   return $x;
+}
+
+my $xml_parser;
+
+sub _parse_xml {
+  my ($xml) = @_;
+  
+  $xml_parser ||= XML::LibXML->new;
+
+  return XML::LibXML::XPathContext->new($xml_parser->parse_string($xml));
 }
 
 
