@@ -32,4 +32,4 @@ my $r = $sb->publish({
   topic   => '/test/foo',
   payload => 'hello world',
 });
-is($r, 0, 'Publish succeeded');
+ok(!defined($r), 'Publish succeeded');
