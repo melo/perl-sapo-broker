@@ -20,7 +20,7 @@ my $sb = Protocol::SAPO::Broker->new({
     my ($lsb) = @_;
     return $lsb->connected($$ % 13);
   },
-  on_message => sub {
+  on_receive => sub {
     (undef, $i_msg) = @_;
     $i_count++;
     return;

@@ -143,7 +143,7 @@ sub _send_message {
 sub _receive_message {
   my ($self, $payload) = @_;
   
-  return $self->_callback('message', $payload);
+  return $self->_optional_callback('receive', $payload);
 }
 
 
