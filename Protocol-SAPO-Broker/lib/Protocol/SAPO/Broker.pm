@@ -116,9 +116,8 @@ sub _send_message {
   
   # Order of the nodes is import! Specified as a SEQUENCE-OF in the WSDL
   
-  # Deal with destination name and type
-  $soap_msg .= qq{<DestinationName>$args->{dest_name}</DestinationName>}
-    if $args->{dest_name};
+  # Deal with destination name (mandatory) and type (optional)
+  $soap_msg .= qq{<DestinationName>$args->{dest_name}</DestinationName>};
   $soap_msg .= qq{<DestinationType>$args->{dest_type}</DestinationType>}
     if $args->{dest_type};
 
