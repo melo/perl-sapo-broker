@@ -127,6 +127,18 @@ is($sb->expect, 0,  'Again, protocol is expecting a frame');
 is($sb->buffer, '', '... and the internal protocol buffer is empty');
 
 
+# Test disconnected incoming data
+
+$r = $sb->disconnect;
+ok(!defined($r), 'Disconnected successfully');
+is($sb->state, 'idle', '... state is consistent');
+
+throws_ok sub { $sb->incoming_data('more!') },
+          qr!Cannot give me incoming data when state is not!,
+          'Incomind data on a disconnected Protocol is bad karma';
+
+
+
 sub _build_frame {
   my ($msg) = @_;
   
