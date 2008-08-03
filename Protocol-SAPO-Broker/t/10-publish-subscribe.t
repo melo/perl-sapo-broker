@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 35;
+use Test::More tests => 45;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -51,6 +51,26 @@ ok(! defined($r), 'Publish went prety well');
 ok($msg =~ m!DestinationName>/test</DestinationName!, '... proper destination');
 ok($msg =~ m!<TextPayload>me</TextPayload>!,          '... proper payload');
 
+# Publish stuff - emtpy payload
+$msg = '';
+$r = $sb->publish({
+  topic => '/test',
+  payload => '',
+});
+ok(! defined($r), 'Empty payload publish went prety well');
+ok($msg =~ m!DestinationName>/test</DestinationName!, '... proper destination');
+ok($msg =~ m!<TextPayload></TextPayload>!,          '... proper payload');
+
+# Publish stuff - undef payload
+$msg = '';
+$r = $sb->publish({
+  topic => '/test2',
+  payload => undef,
+});
+ok(! defined($r), 'Undefined payload publish went prety well');
+ok($msg =~ m!DestinationName>/test2</DestinationName!, '... proper destination');
+ok($msg =~ m!<TextPayload></TextPayload>!,            '... proper payload');
+
 # TODO: add tests for well formed XML and probably some XPath goodness
 
 # Now lets fire up a subscriber connection
@@ -84,6 +104,23 @@ ok(
   $msg_s =~ m!<DestinationType>TOPIC</DestinationType>!,
   '... correct type TOPIC',
 );
+
+# Subscribe a topic as queue
+$r = $sb_consumer->subscribe({ topic => '/test3', as_queue => 'q3' });
+ok(! defined($r), 'Sent subscription request for topic as queue');
+ok(
+  $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']>!,
+  '... correct message type',
+);
+ok(
+  $msg_s =~ m!<DestinationName>q3@/test3</DestinationName>!,
+  '... correct destination q3@/test3',
+);
+ok(
+  $msg_s =~ m!<DestinationType>TOPIC_AS_QUEUE</DestinationType>!,
+  '... correct type TOPIC_AS_QUEUE',
+);
+
 
 
 # publish() (wrong API, failures)
