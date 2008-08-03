@@ -259,7 +259,9 @@ sub _optional_callback {
   my $cb = $self->{cb}{$tag};
   return unless $cb;
 
-  return $cb->($self, @args);
+  $cb->($self, @args);
+  
+  return $self->{error};
 }
 
 
