@@ -3,7 +3,7 @@ package Protocol::SAPO::Broker;
 use warnings;
 use strict;
 use Carp::Clan qw(Protocol::SAPO::Broker);
-use Errno qw( ENOTCONN );
+use Errno qw( ENOTCONN EPROTONOSUPPORT );
 use XML::LibXML;
 use XML::LibXML::XPathContext;
 
@@ -145,7 +145,42 @@ sub _send_message {
 sub _receive_message {
   my ($self, $payload) = @_;
   
-  return $self->_optional_callback('receive', $payload);
+  $self->_optional_callback('receive', $payload);
+  
+  # Parse the XML
+  my $xdoc = eval { _parse_xml($payload) };
+  if (my $e = $@) {
+    $self->_set_error(EPROTONOSUPPORT);    
+    return $self->_optional_callback('payload_error', $payload, $e);
+  }
+  
+  # Check to see if it is a valid Broker message
+  $xdoc->registerNs( mq => 'http://services.sapo.pt/broker' );
+  my ($msg) = $xdoc->findnodes('//mq:Notify/mq:BrokerMessage');
+  return $self->_process_message($msg, $xdoc) if $msg;
+  
+  # Ok, not a BrokerMessage, maybe a Fault?
+  $xdoc->registerNs( soap => 'http://www.w3.org/2003/05/soap-envelope' );
+  my ($fault) = $xdoc->findnodes('//soap:Fault');
+  return $self->_process_fault($fault, $xdoc) if $fault;
+  
+  # WTF is this?
+  return $self->_optional_callback('unknown_payload', $payload, $xdoc);
+}
+
+sub _process_message {}
+
+sub _process_fault {
+  my ($self, $fault, $xdoc) = @_;
+  my %fault;
+  
+  foreach my $elem (['Code', 'Value'], ['Reason', 'Text'], ['Detail']) {
+    my $field = lc($elem->[0]);
+    my $xpath = join('/', map { "soap:$_" } @$elem);
+    $fault{$field} = $xdoc->findvalue($xpath, $fault);
+  }
+  
+  return $self->_optional_callback('fault', \%fault, $xdoc);
 }
 
 
