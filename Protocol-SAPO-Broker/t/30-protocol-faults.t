@@ -12,7 +12,7 @@ BEGIN {
 
 diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
 
-my ($fault_info, $xdoc, $in_msg, $in_wtf, $in_pay, $error);
+my ($fault_info, $xdoc, $in_msg, $in_wtf, $in_pay, $error, $node, $in_unk_msg);
 my $sb = Protocol::SAPO::Broker->new({
   host => '127.0.0.2',
   port => '2233',
@@ -35,7 +35,11 @@ my $sb = Protocol::SAPO::Broker->new({
   on_payload_error => sub {
     (undef, $in_pay, $error) = @_;
     return;
-  }
+  },
+  on_unknown_message => sub {
+    (undef, $node, $in_unk_msg) = @_;
+    return;
+  },
 });
 ok($sb, 'Created a Protocol::SAPO::Broker instance with some paremeters');
 is($sb->host,  '127.0.0.2',   '... with correct given host');
@@ -71,6 +75,44 @@ ok($fault_info, 'We got a SOAP Fault');
 is($fault_info->{code},   'code is soap:Sender',       '... code is correct');
 is($fault_info->{reason}, 'text is the error message', '... reason is correct');
 is($fault_info->{detail}, 'detail is cool',            '... detail is correct');
+
+
+my $bad_message = <<EOM;
+<soap:Envelope
+	xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+	xmlns:wsa="http://www.w3.org/2005/08/addressing"
+	xmlns:mq="http://services.sapo.pt/broker">
+	<soap:Header>
+		<wsa:From>
+			<wsa:Address>broker://agent/agent-name/SampleTopic1</wsa:Address>
+		</wsa:From>
+		<wsa:Action>http://services.sapo.pt/broker/notification/</wsa:Action>
+		<wsa:MessageID>http://services.sapo.pt/broker/message/ID:1276859168</wsa:MessageID>
+	</soap:Header>
+	<soap:Body>
+		<mq:NotAValidMessage>
+			<mq:BrokerMessage>
+				<mq:Priority>4</mq:Priority>
+				<mq:MessageId>ID:1276859168</mq:MessageId>
+				<mq:Timestamp/>
+				<mq:Expiration>2007-08-19T09:55:23Z</mq:Expiration>
+				<mq:DestinationName>SampleTopic1</mq:DestinationName>
+				<mq:TextPayload>Lorem ipsum dolor sit amet, consectetuer adipiscing elit.</mq:TextPayload>
+			</mq:BrokerMessage>
+		</mq:NotAValidMessage>
+	</soap:Body>
+</soap:Envelope>
+EOM
+
+$r = $sb->incoming_data(_build_frame($bad_message));
+ok(!defined($r), 'We got a frame successfully for an unkown protocol');
+is($in_msg, $bad_message,              '... the payload is correct');
+ok(ref($node),                         '... and it has a valid element object');
+is(ref($node), 'XML::LibXML::Element', '... with the proper class');
+
+ok($in_unk_msg, 'We got a unkonwn message');
+is($in_unk_msg, $in_msg,      '... and it was the correct payload');
+is($in_unk_msg, $bad_message, '... even compared to the input');
 
 
 my $wtf = <<EOM;

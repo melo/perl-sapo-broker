@@ -170,7 +170,17 @@ sub _receive_message {
   return $self->_optional_callback('unknown_payload', $payload, $xdoc);
 }
 
-sub _process_message {}
+sub _process_message {
+  my ($self, $mesg, $payload) = @_;
+  
+  my $node_name = $mesg->localname;
+  return $self->_process_notification($mesg, $payload) if $node_name eq 'Notification';
+  
+  return $self->_optional_callback('unknown_message', $mesg, $payload);
+  
+}
+
+sub _process_notification {}
 
 sub _process_fault {
   my ($self, $fault, $xdoc) = @_;
