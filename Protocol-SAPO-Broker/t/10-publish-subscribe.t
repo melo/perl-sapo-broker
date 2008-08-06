@@ -159,3 +159,47 @@ throws_ok sub { $sb->subscribe({ topic => '/test', as_queue => '' }) },
           qr/Missing valid parameter 'as_queue'/,
           '... empty queue name, dies properly';
 
+
+#######
+# Utils
+
+sub _mk_notification {
+  my ($topic, $payload) = @_;
+  my $msg = <<EOF;
+    <soap:Envelope
+    	xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+    	xmlns:wsa="http://www.w3.org/2005/08/addressing"
+    	xmlns:mq="http://services.sapo.pt/broker">
+    	<soap:Header>
+    		<wsa:From>
+    			<wsa:Address>broker://agent/agent-name/##MYTOPIC##</wsa:Address>
+    		</wsa:From>
+    		<wsa:Action>http://services.sapo.pt/broker/notification/</wsa:Action>
+    		<wsa:MessageID>http://services.sapo.pt/broker/message/ID:1276859168</wsa:MessageID>
+    	</soap:Header>
+    	<soap:Body>
+    		<mq:Notification>
+    			<mq:BrokerMessage>
+    				<mq:Priority>4</mq:Priority>
+    				<mq:MessageId>ID:1276859168</mq:MessageId>
+    				<mq:Timestamp/>
+    				<mq:Expiration>2007-08-19T09:55:23Z</mq:Expiration>
+    				<mq:DestinationName>##MYTOPIC##</mq:DestinationName>
+    				<mq:TextPayload>##MYPAYLOAD##</mq:TextPayload>
+    			</mq:BrokerMessage>
+    		</mq:Notification>
+    	</soap:Body>
+    </soap:Envelope>
+EOF
+
+  $msg =~ s/##MYTOPIC##/$topic/g;
+  $msg =~ s/##MYPAYLOAD##/Protocol::SAPO::Broker::_exml($payload)/ge;
+  
+  return $msg;
+}
+
+sub _build_frame {
+  my ($msg) = @_;
+  
+  return pack( 'N', length($msg)).$msg;
+}
