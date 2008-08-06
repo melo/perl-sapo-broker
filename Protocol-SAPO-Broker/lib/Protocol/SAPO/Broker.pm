@@ -153,15 +153,17 @@ sub _receive_message {
     $self->_set_error(EPROTONOSUPPORT);    
     return $self->_optional_callback('payload_error', $payload, $e);
   }
-  
+
+  # Register most important namespaces
+  my $sp = _safe_ns_register($xdoc, soap => 'http://www.w3.org/2003/05/soap-envelope' );
+  my $bp = _safe_ns_register($xdoc, mq   => 'http://services.sapo.pt/broker'          );
+
   # Check to see if it is a valid Broker message
-  $xdoc->registerNs( mq => 'http://services.sapo.pt/broker' );
-  my ($msg) = $xdoc->findnodes('//mq:Notify/mq:BrokerMessage');
-  return $self->_process_message($msg, $xdoc) if $msg;
+  my ($msg) = $xdoc->findnodes("//$sp:Body/$bp:*");
+  return $self->_process_message($msg, $payload) if $msg;
   
   # Ok, not a BrokerMessage, maybe a Fault?
-  $xdoc->registerNs( soap => 'http://www.w3.org/2003/05/soap-envelope' );
-  my ($fault) = $xdoc->findnodes('//soap:Fault');
+  my ($fault) = $xdoc->findnodes("//$sp:Fault");
   return $self->_process_fault($fault, $xdoc) if $fault;
   
   # WTF is this?
