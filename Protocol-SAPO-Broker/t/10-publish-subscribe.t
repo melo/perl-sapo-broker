@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 68;
+use Test::More tests => 82;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -188,6 +188,45 @@ ok($cb1_bp,         'SAPO Broker namespace prefix is defined');
 ok(length($cb1_bp), '... and has something in it');
 is($sb_consumer, $cb1_sb, 'Proper Protocol object in callback also');
 
+
+# Activate second subscription over same topic
+my ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc, $cb2_bp);
+$r = $sb_consumer->subscribe({
+  topic => $valid_topic,
+  as_queue => 'q1',
+  callback => sub {
+    ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc, $cb2_bp) = @_;
+    return;
+  },
+});
+
+
+# Message for a matching topic (two matches)
+($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp) =
+(undef,   undef,    undef,     undef,     undef,     undef  );
+
+$r = $sb_consumer->incoming_data(
+  _build_frame(
+    _mk_notification(
+      $valid_topic, $inv_payload,
+    )
+  )
+);
+ok(! defined($r), 'Sent Notif with active subscription, matching topic');
+is($cb2_pay, $inv_payload,  '... and our second active subscription did catch it');
+is($cb2_dest, $valid_topic, '... even got the destination right');
+is(ref($cb2_mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
+is(ref($cb2_xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
+ok($cb2_bp,         'SAPO Broker namespace prefix is defined');
+ok(length($cb2_bp), '... and has something in it');
+is($sb_consumer, $cb2_sb, 'Proper Protocol object in callback also');
+
+is($cb1_pay,  $cb2_pay,  'Callback for subs 1 and subs 2 have same payload');
+is($cb1_dest, $cb2_dest, '... and same destination');
+is($cb1_mesg, $cb2_mesg, '... and same message element');
+is($cb1_xdoc, $cb2_xdoc, '... and same XPath context');
+is($cb1_bp,   $cb2_bp,   '... and same Broker namespace prefix');
+is($cb1_sb,   $cb2_sb,   '... and even the same Protocol object');
 
 
 # publish() (wrong API, failures)

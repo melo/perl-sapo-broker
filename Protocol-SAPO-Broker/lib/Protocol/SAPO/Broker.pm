@@ -91,10 +91,6 @@ sub subscribe {
 
   my $dest_name = $args->{topic};
   my $dest_type = 'TOPIC';
-  if (my $queue_name = $args->{as_queue}) {
-    $dest_name = "$queue_name\@$dest_name";
-    $dest_type = 'TOPIC_AS_QUEUE';
-  }
   
   if (exists $args->{callback}) {
     my $cb = $args->{callback};
@@ -103,6 +99,11 @@ sub subscribe {
     
     my $subs = $self->{subs}{$dest_name} ||= [];
     push @$subs, $cb;
+  }
+
+  if (my $queue_name = $args->{as_queue}) {
+    $dest_name = "$queue_name\@$dest_name";
+    $dest_type = 'TOPIC_AS_QUEUE';
   }
   
   return $self->_send_message({
