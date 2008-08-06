@@ -333,7 +333,7 @@ my $xml_parser;
 sub _parse_xml {
   my ($xml) = @_;
   
-  $xml_parser ||= XML::LibXML->new;
+  $xml_parser = XML::LibXML->new unless $xml_parser;
 
   return XML::LibXML::XPathContext->new($xml_parser->parse_string($xml));
 }
