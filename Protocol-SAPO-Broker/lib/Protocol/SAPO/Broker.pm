@@ -338,6 +338,17 @@ sub _parse_xml {
   return XML::LibXML::XPathContext->new($xml_parser->parse_string($xml));
 }
 
+sub _safe_ns_register {
+  my ($xpc, $prefix, $ns) = @_;
+  
+  while ($xpc->lookupNs($prefix)) {
+    $prefix++;
+  }
+  $xpc->registerNs($prefix => $ns);
+  
+  return $prefix;
+}
+
 
 =head1 NAME
 
