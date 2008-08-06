@@ -96,6 +96,15 @@ sub subscribe {
     $dest_type = 'TOPIC_AS_QUEUE';
   }
   
+  if (exists $args->{callback}) {
+    my $cb = $args->{callback};
+    croak("Parameter 'callback' must be a CODE ref, ")
+      unless ref($cb) eq 'CODE';
+    
+    my $subs = $self->{subs}{$dest_name} ||= [];
+    push @$subs, $cb;
+  }
+  
   return $self->_send_message({
     mesg      => 'Notify',
     dest_name => $dest_name,
