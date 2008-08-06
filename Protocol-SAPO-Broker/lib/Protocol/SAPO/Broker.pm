@@ -194,7 +194,15 @@ sub _process_notification {
   my $destination = $xdoc->findvalue("//$bp:DestinationName", $mesg);
   my $payload     = $xdoc->findvalue("//$bp:TextPayload", $mesg);
 
-  return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc, $bp);
+  return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc, $bp)
+    unless exists $self->{subs}{$destination};
+    
+  my $subs = $self->{subs}{$destination};
+  foreach my $cb (@$subs) {
+    $cb->($self, $payload, $destination, $mesg, $xdoc, $bp);
+  }
+  
+  return;
 }
 
 sub _process_fault {

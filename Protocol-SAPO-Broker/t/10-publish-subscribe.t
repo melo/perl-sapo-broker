@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 53;
+use Test::More tests => 68;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -143,6 +143,52 @@ ok($bp,         'SAPO Broker namespace prefix is defined');
 ok(length($bp), '... and has something in it');
 
 
+# Subscribe with callback, receive notif, check if matched
+my $valid_topic = '/real_test';
+my ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp);
+$r = $sb_consumer->subscribe({
+  topic => $valid_topic,
+  callback => sub {
+    ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp) = @_;
+    return;
+  },
+});
+
+
+# Message from a unkown subscription
+$r = $sb_consumer->incoming_data(
+  _build_frame(
+    _mk_notification(
+      $inv_topic, $inv_payload,
+    )
+  )
+);
+ok(! defined($r), 'Sent Notif with active subscription, but wrong topic');
+isnt($cb1_pay, $inv_payload, '... and our active subscription didnt catch it');
+isnt($cb1_dest, $inv_topic,  '... not even a small register of it');
+ok(!defined($cb1_mesg),      '... so message is undef');
+ok(!defined($cb1_xdoc),      '... and XPath is undef');
+ok(!defined($cb1_bp),        '... and namespace prefix is undef');
+
+
+# Message for a matching topic
+$r = $sb_consumer->incoming_data(
+  _build_frame(
+    _mk_notification(
+      $valid_topic, $inv_payload,
+    )
+  )
+);
+ok(! defined($r), 'Sent Notif with active subscription, matching topic');
+is($cb1_pay, $inv_payload,  '... and our active subscription did catch it');
+is($cb1_dest, $valid_topic, '... even got the destination right');
+is(ref($cb1_mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
+is(ref($cb1_xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
+ok($cb1_bp,         'SAPO Broker namespace prefix is defined');
+ok(length($cb1_bp), '... and has something in it');
+is($sb_consumer, $cb1_sb, 'Proper Protocol object in callback also');
+
+
 
 # publish() (wrong API, failures)
 ok($sb, "Get ready to test publish() API failures");
@@ -179,6 +225,9 @@ throws_ok sub { $sb->subscribe({ topic => '' }) },
 throws_ok sub { $sb->subscribe({ topic => '/test', as_queue => '' }) },
           qr/Missing valid parameter 'as_queue'/,
           '... empty queue name, dies properly';
+throws_ok sub { $sb->subscribe({ topic => '/test', callback => '' }) },
+          qr/Parameter 'callback' must be a CODE ref, /,
+          '... non-CODE-ref callback, dies properly';
 
 
 #######
