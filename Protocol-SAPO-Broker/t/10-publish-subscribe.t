@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 45;
+use Test::More tests => 53;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -75,13 +75,19 @@ ok($msg =~ m!<TextPayload></TextPayload>!,            '... proper payload');
 
 # Now lets fire up a subscriber connection
 
-my $msg_s;
+my ($msg_s, $i_msg_s);
+my ($missed_pay, $missed_dest, $mesg, $xdoc, $bp);
 my $sb_consumer = Protocol::SAPO::Broker->new({
   host => '127.0.0.2',
   port => '2233',
   auto_connect => 1,
   on_connect => sub { my $lsb = shift; return $lsb->connected($$ % 13) },
   on_send    => sub { (undef, undef, $msg_s) = @_; return },
+  on_receive => sub { (undef, $i_msg_s) = @_; return },
+  on_unmatched_message => sub {
+    (undef, $missed_pay, $missed_dest, $mesg, $xdoc, $bp) = @_;
+    return;
+  },
 });
 ok($sb, 'Created a Protocol::SAPO::Broker instance for subscriber');
 is($sb_consumer->host,  '127.0.0.2',   '... with correct given host');
@@ -120,6 +126,21 @@ ok(
   $msg_s =~ m!<DestinationType>TOPIC_AS_QUEUE</DestinationType>!,
   '... correct type TOPIC_AS_QUEUE',
 );
+
+
+# Message from a unkown subscription
+my $inv_topic = 'no_such_topic';
+my $inv_payload = 'oh my little payload';
+my $msg_ukn_subs = _mk_notification($inv_topic, $inv_payload);
+$r = $sb_consumer->incoming_data(_build_frame($msg_ukn_subs));
+ok(!defined($r),              'Incoming message, frame ok');
+is($i_msg_s, $msg_ukn_subs,   '... proper payload');
+is($missed_pay, $inv_payload, '... and properly missed, no hook for her');
+is($missed_dest, $inv_topic,  '... in the proper unmatched topic');
+is(ref($mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
+is(ref($xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
+ok($bp,         'SAPO Broker namespace prefix is defined');
+ok(length($bp), '... and has something in it');
 
 
 

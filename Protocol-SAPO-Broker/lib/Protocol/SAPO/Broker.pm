@@ -160,7 +160,7 @@ sub _receive_message {
 
   # Check to see if it is a valid Broker message
   my ($msg) = $xdoc->findnodes("//$sp:Body/$bp:*");
-  return $self->_process_message($msg, $payload) if $msg;
+  return $self->_process_message($msg, $payload, $xdoc, $bp) if $msg;
   
   # Ok, not a BrokerMessage, maybe a Fault?
   my ($fault) = $xdoc->findnodes("//$sp:Fault");
@@ -171,16 +171,22 @@ sub _receive_message {
 }
 
 sub _process_message {
-  my ($self, $mesg, $payload) = @_;
+  my ($self, $mesg, $payload, $xdoc, $bp) = @_;
   
   my $node_name = $mesg->localname;
-  return $self->_process_notification($mesg, $payload) if $node_name eq 'Notification';
+  return $self->_process_notification($mesg, $xdoc, $bp) if $node_name eq 'Notification';
   
   return $self->_optional_callback('unknown_message', $mesg, $payload);
-  
 }
 
-sub _process_notification {}
+sub _process_notification {
+  my ($self, $mesg, $xdoc, $bp) = @_;
+  
+  my $destination = $xdoc->findvalue("//$bp:DestinationName", $mesg);
+  my $payload     = $xdoc->findvalue("//$bp:TextPayload", $mesg);
+
+  return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc, $bp);
+}
 
 sub _process_fault {
   my ($self, $fault, $xdoc) = @_;
