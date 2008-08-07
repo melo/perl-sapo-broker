@@ -256,7 +256,12 @@ sub incoming_data {
   # Clear previous error
   $self->_set_error(undef);
   
-  # TODO: deal with data == undef => EOF
+  # Deal with EOF
+  if (!defined($data)) { # EOF
+    $self->_optional_callback('eof', $self);
+    $self->disconnect;
+    return;
+  }
   
   croak("Cannot give me incoming data when state is not 'connected', ")
     unless $self->{state} eq 'connected';
