@@ -78,6 +78,7 @@ sub publish {
     mesg      => 'Publish',
     dest_name => $args->{topic},
     payload   => $args->{payload},
+    wrapper   => 'BrokerMessage',
   });
 }
 
@@ -122,9 +123,11 @@ sub _send_message {
   return $self->_set_error(ENOTCONN) if $self->state ne 'connected';
   
   # message header
+  my $wrapper = $args->{wrapper};
   my $soap_msg
     = q{<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>}
-    . qq{<$args->{mesg} xmlns="http://services.sapo.pt/broker"><BrokerMessage>};
+    . qq{<$args->{mesg} xmlns="http://services.sapo.pt/broker">};
+  $soap_msg .= "<$wrapper>" if $wrapper;
   
   # Order of the nodes is import! Specified as a SEQUENCE-OF in the WSDL
   
@@ -142,8 +145,9 @@ sub _send_message {
   }
   
   # message trailer
+  $soap_msg .= "</$wrapper>" if $wrapper;
   $soap_msg
-    .= qq{</BrokerMessage></$args->{mesg}>}
+    .= qq{</$args->{mesg}>}
     .  q{</s:Body></s:Envelope>};
 
   # wire-level frame: lenght prefix + payload

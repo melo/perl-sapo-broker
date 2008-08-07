@@ -99,7 +99,7 @@ is($sb_consumer->info, $$ % 13,        '... proper connection state');
 $r = $sb_consumer->subscribe({ topic => '/test2' });
 ok(! defined($r), 'Sent subscription request');
 ok(
-  $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']>!,
+  $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']><De!,
   '... correct message type',
 );
 ok(
@@ -115,7 +115,7 @@ ok(
 $r = $sb_consumer->subscribe({ topic => '/test3', as_queue => 'q3' });
 ok(! defined($r), 'Sent subscription request for topic as queue');
 ok(
-  $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']>!,
+  $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']><De!,
   '... correct message type',
 );
 ok(
