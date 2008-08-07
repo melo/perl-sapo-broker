@@ -293,7 +293,18 @@ sub write_error {
   
   $self->_optional_callback('write_error', $error);
 
-  return $self->disconnect;  
+  return $self->disconnect;
+}
+
+sub read_error {
+  my ($self, $error) = @_;
+
+  $self->_set_error($error);
+  $self->_set_state('read_error');
+  
+  $self->_optional_callback('read_error', $error);
+
+  return $self->disconnect;
 }
 
 

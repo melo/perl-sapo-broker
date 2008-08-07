@@ -1,8 +1,8 @@
 #!perl -T
 
-use Test::More tests => 32;
+use Test::More tests => 39;
 use Test::Exception;
-use Errno qw( ENOTCONN EPIPE );
+use Errno qw( ENOTCONN EPIPE ECONNRESET );
 
 BEGIN {
 	use_ok( 'Protocol::SAPO::Broker' );
@@ -95,4 +95,25 @@ $sb->connect_failed(ENOTCONN);
 is($conn, -1,              'connect error called proper callback');
 is($sb->state, 'idle',     '... and state is up-to-date');
 ok($sb->error == ENOTCONN, '... and the error flag is consistent');
+
+# Errors reading
+$conn = 0;
+my ($read_error);
+$sb = Protocol::SAPO::Broker->new({
+  host => '127.0.0.2',
+  port => '2233',
+  on_connect    => sub { my ($lsb) = @_; $conn++; $lsb->connected($$)  },
+  on_read_error => sub { (undef, $read_error) = @_; $conn = -2; return },
+});
+
+ok($sb, 'Created a Protocol::SAPO::Broker instance with some paremeters');
+is($sb->state, 'connected', '... proper initial state');
+is($conn, 1,                '... proper callback called');
+
+$conn = 0;
+$sb->read_error(ECONNRESET);
+is($conn, -2,              'read error called proper callback');
+is($sb->state, 'idle',        '... and state is up-to-date');
+ok($sb->error == ECONNRESET,  '... and the error flag is consistent');
+ok($sb->error == $read_error, '... with the callback argument also');
 
