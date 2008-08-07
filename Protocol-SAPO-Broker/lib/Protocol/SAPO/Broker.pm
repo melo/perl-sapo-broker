@@ -252,6 +252,9 @@ sub connect_failed {
 
 sub incoming_data {
   my ($self, $data) = @_;
+
+  # Clear previous error
+  $self->_set_error(undef);
   
   # TODO: deal with data == undef => EOF
   
