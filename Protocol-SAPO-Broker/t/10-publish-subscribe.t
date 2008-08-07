@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 82;
+use Test::More tests => 84;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -246,6 +246,12 @@ throws_ok sub { $sb->publish({ topic => '' }) },
 throws_ok sub { $sb->publish({ topic => '/test' }) },
           qr/Missing required parameter 'payload'/,
           '... missing payload, dies properly';
+TODO: {
+  todo_skip('Not implemented yet', 1);
+  throws_ok sub { $sb->publish({ topic => '/test', payload => '2321', wtf => 1 }) },
+            qr/Parameter unknown 'wtf', /,
+            '... unknown parameter, dies properly';
+}
 
 # subscribe() (wrong API, failures)
 ok($sb, "Get ready to test subscribe() API failures");
@@ -267,8 +273,13 @@ throws_ok sub { $sb->subscribe({ topic => '/test', as_queue => '' }) },
 throws_ok sub { $sb->subscribe({ topic => '/test', callback => '' }) },
           qr/Parameter 'callback' must be a CODE ref, /,
           '... non-CODE-ref callback, dies properly';
-
-
+TODO: {
+  todo_skip('Not implemented yet', 1);
+  throws_ok sub { $sb->subscribe({ topic => '/test', payload => '2321' }) },
+            qr/Parameter unknown 'payload', /,
+            '... unknown parameter, dies properly';
+}
+        
 #######
 # Utils
 
