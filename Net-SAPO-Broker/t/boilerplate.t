@@ -2,7 +2,12 @@
 
 use strict;
 use warnings;
-use Test::More tests => 3;
+use Test::More;
+
+plan skip_all => "Use TEST_AUTHOR=1 to test pod stuff"
+  unless $ENV{TEST_AUTHOR};
+
+plan tests => 3;
 
 sub not_in_file_ok {
     my ($filename, %regex) = @_;
