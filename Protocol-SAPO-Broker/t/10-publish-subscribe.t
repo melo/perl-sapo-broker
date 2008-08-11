@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 84;
+use Test::More tests => 97;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -48,6 +48,25 @@ $r = $sb->publish({
   payload => 'me',
 });
 ok(! defined($r), 'Publish went prety well');
+ok(
+  $msg =~ m!<Publish xmlns=["']http://services.sapo.pt/broker["']><BrokerMessage!,
+  '... correct message type',
+);
+ok($msg =~ m!DestinationName>/test</DestinationName!, '... proper destination');
+ok($msg =~ m!<TextPayload>me</TextPayload>!,          '... proper payload');
+
+# Publish stuff with ack
+$msg = '';
+$r = $sb->publish({
+  topic => '/test',
+  payload => 'me',
+  ack => 1,
+});
+ok(! defined($r), 'Publish went prety well');
+ok(
+  $msg =~ m!<Publish action-id=["'][\w\d-]+["'] xmlns=["']http://services.sapo.pt/broker["']><BrokerMessage!,
+  '... correct message type',
+);
 ok($msg =~ m!DestinationName>/test</DestinationName!, '... proper destination');
 ok($msg =~ m!<TextPayload>me</TextPayload>!,          '... proper payload');
 
@@ -111,11 +130,43 @@ ok(
   '... correct type TOPIC',
 );
 
+# Subscribe a topic with ack
+$r = $sb_consumer->subscribe({ topic => '/test2', ack => 1 });
+ok(! defined($r), 'Sent subscription request');
+ok(
+  $msg_s =~ m!<Notify action-id=["'][\w\d-]+["'] xmlns=["']http://services.sapo.pt/broker["']><De!,
+  '... correct message type',
+);
+ok(
+  $msg_s =~ m!<DestinationName>/test2</DestinationName>!,
+  '... correct destination /test2',
+);
+ok(
+  $msg_s =~ m!<DestinationType>TOPIC</DestinationType>!,
+  '... correct type TOPIC',
+);
+
 # Subscribe a topic as queue
 $r = $sb_consumer->subscribe({ topic => '/test3', as_queue => 'q3' });
 ok(! defined($r), 'Sent subscription request for topic as queue');
 ok(
   $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']><De!,
+  '... correct message type',
+);
+ok(
+  $msg_s =~ m!<DestinationName>q3@/test3</DestinationName>!,
+  '... correct destination q3@/test3',
+);
+ok(
+  $msg_s =~ m!<DestinationType>TOPIC_AS_QUEUE</DestinationType>!,
+  '... correct type TOPIC_AS_QUEUE',
+);
+
+# Subscribe a topic as queue with ack
+$r = $sb_consumer->subscribe({ topic => '/test3', as_queue => 'q3', ack => 1 });
+ok(! defined($r), 'Sent subscription request for topic as queue');
+ok(
+  $msg_s =~ m!<Notify action-id=["'][\w\d-]+["'] xmlns=["']http://services.sapo.pt/broker["']><De!,
   '... correct message type',
 );
 ok(

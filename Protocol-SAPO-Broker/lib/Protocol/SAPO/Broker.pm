@@ -79,6 +79,7 @@ sub publish {
     dest_name => $args->{topic},
     payload   => $args->{payload},
     wrapper   => 'BrokerMessage',
+    ack       => $args->{ack},
   });
 }
 
@@ -111,6 +112,7 @@ sub subscribe {
     mesg      => 'Notify',
     dest_name => $dest_name,
     dest_type => $dest_type,
+    ack       => $args->{ack},
   });
 }
 
@@ -121,16 +123,23 @@ sub _send_message {
   my ($self, $args) = @_;
   
   return $self->_set_error(ENOTCONN) if $self->state ne 'connected';
-  
-  # message header
-  my $wrapper = $args->{wrapper};
+
+  # Start SOAP header  
   my $soap_msg
-    = q{<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>}
-    . qq{<$args->{mesg} xmlns="http://services.sapo.pt/broker">};
+    = q{<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>};
+  
+  # Add message type
+  my $mesg = $args->{mesg};
+  if ($args->{ack}) {
+    $mesg .= ' action-id="'._gen_action_id().'"';
+  }
+  $soap_msg .= qq{<$mesg xmlns="http://services.sapo.pt/broker">};
+  
+  # Some messages require a wrapper, like Publish
+  my $wrapper = $args->{wrapper};
   $soap_msg .= "<$wrapper>" if $wrapper;
   
-  # Order of the nodes is import! Specified as a SEQUENCE-OF in the WSDL
-  
+  # Order of the nodes is important! Specified as a SEQUENCE-OF in the WSDL
   # Deal with destination name (mandatory) and type (optional)
   $soap_msg .= qq{<DestinationName>$args->{dest_name}</DestinationName>};
   $soap_msg .= qq{<DestinationType>$args->{dest_type}</DestinationType>}
@@ -408,6 +417,16 @@ sub _safe_ns_register {
   return $prefix;
 }
 
+
+### ID generators
+
+my $id_count = 0;
+
+sub _gen_action_id {
+  $id_count++;
+  my $t = time();
+  return "$^T-$t-$$-$id_count";
+}
 
 =head1 NAME
 
