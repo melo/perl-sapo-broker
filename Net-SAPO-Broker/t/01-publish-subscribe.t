@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 22;
+use Test::More tests => 31;
 
 BEGIN {
 	use_ok( 'Net::SAPO::Broker' );
@@ -16,8 +16,12 @@ SKIP: {
     7,
   ) unless $ENV{TEST_SAPO_BROKER};
   
+  my $ukn_payload;
   my $sb = Net::SAPO::Broker->new({
     auto_connect => 0,
+    on_unknown_payload => sub {
+      my (undef, $ukn_payload) = @_;
+    },
   });
   ok($sb);
   is($sb->state, 'idle', 'Idle, not connected');
@@ -44,10 +48,14 @@ SKIP: {
 
   # Start a subscriber
   my $unmatched;
+  my $ukn_payload_c;
   my $sbc = Net::SAPO::Broker->new({
     on_unmatched_message => sub {
       (undef, $unmatched) = @_;
       return;
+    },
+    on_unknown_payload => sub {
+      my (undef, $ukn_payload_c) = @_;
     },
   });  
   ok($sbc, 'Consumer connection ok');
@@ -73,6 +81,7 @@ SKIP: {
   ok($recv_mesg, "Got a message and it was matched");
   is($recv_mesg, $$, '... and it has the proper payload');
   ok(!defined($unmatched), '... and we didnt receive unmatched messages');
+  ok(!defined($ukn_payload_c), '... nor any unimplemented ones');
 
   # Subscribe without callback
   $r = $sbc->subscribe({
@@ -96,6 +105,7 @@ SKIP: {
   ok($unmatched, "Got a match caugth by the general handler");
   is($unmatched, $$, '... and it has the proper payload');
   ok(!defined($recv_mesg), '... and we didnt receive matched messages');
+  ok(!defined($ukn_payload_c), 'No unimplemented messages');
 
   # Clear status
   $recv_mesg = $unmatched = undef;
@@ -118,4 +128,35 @@ SKIP: {
   is($unmatched, $$, '... and it has the proper payload');
   ok($recv_mesg, "Got a match caugth by the specific handler");
   is($recv_mesg, $$, '... and it has the proper payload');
+  ok(!defined($ukn_payload_c), 'No unimplemented messages');
+  
+  # Clear status
+  $recv_mesg = $unmatched = undef;
+  
+  # Publish something on foo and bar with ack's on
+  $sb->publish({
+    topic   => '/test/foo',
+    payload => $$, # PID
+    ack     => 1,
+  });
+
+  $sb->publish({
+    topic   => '/test/bar',
+    payload => $$, # PID
+    ack     => 1,
+  });
+  
+  # Waits for the acks
+  $sb->deliver_messages(1);
+  ok(!defined($ukn_payload), 'Wait for acks, no unimplemented messages');
+  
+  # Waits for messages and delivers it
+  # It will wait at most 1 seconds
+  $sbc->deliver_messages(1);
+  ok($unmatched, "Got a match caugth by the general handler");
+  is($unmatched, $$, '... and it has the proper payload');
+  ok($recv_mesg, "Got a match caugth by the specific handler");
+  is($recv_mesg, $$, '... and it has the proper payload');
+  ok(!defined($ukn_payload_c), 'No unimplemented messages');
+  
 }
