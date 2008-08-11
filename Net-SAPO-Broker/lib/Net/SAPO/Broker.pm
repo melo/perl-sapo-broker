@@ -4,6 +4,7 @@ use warnings;
 use strict;
 use Protocol::SAPO::Broker;
 use IO::Socket::INET;
+use IO::Select;
 
 our $VERSION = '0.01';
 
@@ -20,7 +21,7 @@ sub new {
   return $self;
 }
 
-### API
+### Common API
 
 sub state { return $_[0]{psb}->state }
 
@@ -34,6 +35,45 @@ sub publish {
   my $self = shift;
   
   return $self->{psb}->publish(@_);
+}
+
+sub subscribe {
+  my $self = shift;
+  
+  return $self->{psb}->subscribe(@_);
+}
+
+### Local API
+
+sub deliver_messages {
+  my ($self, $timeout) = @_;
+  $timeout ||= 0;
+  
+  my $psb  = $self->{psb};
+  my $sock = $psb->info();
+  
+  my $select = IO::Select->new($sock);
+  
+  WAIT_FOR_DATA:
+  while($psb->state eq 'connected') {
+    last WAIT_FOR_DATA unless $select->can_read($timeout);
+    
+    my $data;
+    my $r = $sock->sysread($data, 32_000);
+    
+    if (!defined($r)) {
+      $psb->read_error($!);
+    }
+    elsif ($r) {
+      $r = $psb->incoming_data($data);
+      croak("Error in frame from network: $r") if $r;
+    }
+    else {
+      $psb->incoming_data(undef); # Signal EOF
+    }
+  }
+  
+  return;
 }
 
 

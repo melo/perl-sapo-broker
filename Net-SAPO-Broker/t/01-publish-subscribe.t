@@ -1,6 +1,8 @@
 #!perl -T
 
-use Test::More tests => 8;
+use strict;
+use warnings;
+use Test::More tests => 22;
 
 BEGIN {
 	use_ok( 'Net::SAPO::Broker' );
@@ -30,13 +32,90 @@ SKIP: {
   is($sb->state, 'connected', 'User started connection ok');
 
 
-  my $sb = Net::SAPO::Broker->new;
-  ok($sb);
+  $sb = Net::SAPO::Broker->new;
+  ok($sb, 'Seccond connection ok');
   is($sb->state, 'connected', 'Good connection now');
 
-  my $r = $sb->publish({
+  $r = $sb->publish({
     topic   => '/test/foo',
     payload => 'hello world',
   });
   ok(!defined($r), 'Publish succeeded');
+
+  # Start a subscriber
+  my $unmatched;
+  my $sbc = Net::SAPO::Broker->new({
+    on_unmatched_message => sub {
+      (undef, $unmatched) = @_;
+      return;
+    },
+  });  
+  ok($sbc, 'Consumer connection ok');
+  is($sbc->state, 'connected', 'Good connection now');
+
+  my $recv_mesg;
+  $r = $sbc->subscribe({
+    topic    => '/test/foo',
+    callback => sub { (undef, $recv_mesg) = @_ },
+  });
+  ok(!defined($r), 'Subscribe succeeded');
+  sleep(1);
+  
+  # Publish something
+  $sb->publish({
+    topic   => '/test/foo',
+    payload => $$, # PID
+  });
+
+  # Waits for messages and delivers it
+  # It will wait at most 1 seconds
+  $sbc->deliver_messages(1);
+  ok($recv_mesg, "Got a message and it was matched");
+  is($recv_mesg, $$, '... and it has the proper payload');
+  ok(!defined($unmatched), '... and we didnt receive unmatched messages');
+
+  # Subscribe without callback
+  $r = $sbc->subscribe({
+    topic    => '/test/bar',
+  });
+  ok(!defined($r), 'Subscribe succeeded');
+  sleep(1);
+  
+  # Clear status
+  $recv_mesg = $unmatched = undef;
+  
+  # Publish something on bar 
+  $sb->publish({
+    topic   => '/test/bar',
+    payload => $$, # PID
+  });
+
+  # Waits for messages and delivers it
+  # It will wait at most 1 seconds
+  $sbc->deliver_messages(1);
+  ok($unmatched, "Got a match caugth by the general handler");
+  is($unmatched, $$, '... and it has the proper payload');
+  ok(!defined($recv_mesg), '... and we didnt receive matched messages');
+
+  # Clear status
+  $recv_mesg = $unmatched = undef;
+  
+  # Publish something on bar 
+  $sb->publish({
+    topic   => '/test/foo',
+    payload => $$, # PID
+  });
+
+  $sb->publish({
+    topic   => '/test/bar',
+    payload => $$, # PID
+  });
+  
+  # Waits for messages and delivers it
+  # It will wait at most 1 seconds
+  $sbc->deliver_messages(1);
+  ok($unmatched, "Got a match caugth by the general handler");
+  is($unmatched, $$, '... and it has the proper payload');
+  ok($recv_mesg, "Got a match caugth by the specific handler");
+  is($recv_mesg, $$, '... and it has the proper payload');
 }
