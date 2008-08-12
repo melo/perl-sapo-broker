@@ -1,0 +1,32 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+use 5.006;
+
+# Make sure we have the proper dependencies installed
+my @deps = qw(
+  Net::SAPO::Broker
+);
+
+foreach my $module (@deps) {
+	eval "require $module; import $module ();";
+	if ($@) {
+	  my $mesg = <<"    OOPS";
+	    ERROR: You seem to be missing the '$module' module.
+	    
+	    Unfortunately I require that module to do my job. Use:
+
+	      cpan $module
+	      
+	    to install it.
+	    
+	    $@
+    OOPS
+    my ($prefix) = $mesg =~ /^(\s+)/;
+    $mesg =~ s/^$prefix//gsm;
+    print STDERR "\n",$mesg,"\n";
+    exit(1);
+	}
+}
+
