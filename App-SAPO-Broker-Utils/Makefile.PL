@@ -13,5 +13,6 @@ install_script "sapo-broker-client";
 
 # Specific dependencies
 requires 'Net::SAPO::Broker' => '0.01';
+requires 'Getopt::Long'      => 0;
 
 WriteAll;

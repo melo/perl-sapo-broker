@@ -7,6 +7,7 @@ use 5.006;
 # Make sure we have the proper dependencies installed
 my @deps = qw(
   Net::SAPO::Broker
+  Getopt::Long
 );
 
 foreach my $module (@deps) {
@@ -26,6 +27,36 @@ foreach my $module (@deps) {
 	}
 }
 
+# Parse command line
+
+my ($subscribe, $publish);
+my $ok = GetOptions(
+  "subscribe" => \$subscribe,
+  "publish"   => \$publish,
+);
+
+usage() unless $ok;
+usage("One off 'subscribe' or 'publish' must be used")
+  unless $subscribe || $publish;
+usage("Only one off 'subscribe' or 'publish' can be used")
+  if $subscribe && $publish;
+usage("Need set of topics to publish/subscribe to") unless @ARGV;
+
+
+### Usage
+
+sub usage {
+  my ($mesg) = @_;
+  
+  print STDERR "ERROR: $mesg\n" if $mesg;
+  _write_err_mesg(<<"  USAGE");
+    Usage: sapo-broker-client --subcribe | --publish topic [topic...]
+    
+      --subscribe   prints new messages from any of the topics
+      --publish     sends each non-empty lines from stdin to all the topics
+  USAGE
+  exit(1);
+}
 
 sub _write_err_mesg {
   my ($mesg) = @_;
