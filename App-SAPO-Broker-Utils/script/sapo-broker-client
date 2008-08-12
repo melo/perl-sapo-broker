@@ -20,13 +20,17 @@ foreach my $module (@deps) {
 	      cpan $module
 	      
 	    to install it.
-	    
-	    $@
     OOPS
-    my ($prefix) = $mesg =~ /^(\s+)/;
-    $mesg =~ s/^$prefix//gsm;
-    print STDERR "\n",$mesg,"\n";
+    _write_err_mesg($mesg);
     exit(1);
 	}
 }
 
+
+sub _write_err_mesg {
+  my ($mesg) = @_;
+  
+  my ($prefix) = $mesg =~ /^(\s+)/;
+  $mesg =~ s/^$prefix//gsm;
+  print STDERR "\n",$mesg,"\n";
+}
