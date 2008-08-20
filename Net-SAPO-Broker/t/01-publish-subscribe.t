@@ -13,7 +13,7 @@ diag( "Testing Net::SAPO::Broker $Net::SAPO::Broker::VERSION, Perl $], $^X" );
 SKIP: {
   skip(
     'Net::SAPO::Broker tests require a TEST_SAPO_BROKER ENV with the IP of agent to use',
-    7,
+    30,
   ) unless $ENV{TEST_SAPO_BROKER};
   
   my $ukn_payload;
