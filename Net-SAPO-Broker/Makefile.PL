@@ -9,4 +9,7 @@ requires 'Protocol::SAPO::Broker' => '0.01';
 requires 'Carp::Clan'             => 0;
 requires 'Errno'                  => 0;
 
+# Meta
+repository 'http://github.com/melo/perl-sapo-broker';
+
 WriteAll;
