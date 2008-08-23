@@ -125,8 +125,15 @@ sub _parse_common_args {
       if exists $clean{$f} && ref($clean{$f}) ne 'CODE';
   }
 
+  # Enable ack if we ask for feedback
+  foreach my $f (qw( on_success on_error )) {
+    $clean{ack} = 1 if exists $clean{$f};
+  }
+
+  # Check for valid queue ID
   croak("Missing valid parameter 'as_queue', ")
     if exists $clean{as_queue} && !$clean{as_queue};
+  
   
   return \%clean;
 }
