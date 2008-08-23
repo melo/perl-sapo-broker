@@ -130,33 +130,38 @@ sub _send_message {
   
   # Add message type
   my $mesg = $args->{mesg};
+  my $id   = $args->{id};
   if ($args->{ack}) {
-    $mesg .= ' action-id="'._gen_action_id().'"';
+    $id ||= _gen_action_id();
+    $mesg .= qq{ b:action-id="$id"};
   }
-  $soap_msg .= qq{<$mesg xmlns="http://services.sapo.pt/broker">};
+  $soap_msg .= qq{<b:$mesg xmlns:b="http://services.sapo.pt/broker">};
   
   # Some messages require a wrapper, like Publish
   my $wrapper = $args->{wrapper};
-  $soap_msg .= "<$wrapper>" if $wrapper;
+  $soap_msg .= "<b:$wrapper>" if $wrapper;
+  
+  # Generate MessageId header
+  $soap_msg .= qq{<b:MessageId>$id</b:MessageId>} if $id;
   
   # Order of the nodes is important! Specified as a SEQUENCE-OF in the WSDL
   # Deal with destination name (mandatory) and type (optional)
-  $soap_msg .= qq{<DestinationName>$args->{dest_name}</DestinationName>};
-  $soap_msg .= qq{<DestinationType>$args->{dest_type}</DestinationType>}
+  $soap_msg .= qq{<b:DestinationName>$args->{dest_name}</b:DestinationName>};
+  $soap_msg .= qq{<b:DestinationType>$args->{dest_type}</b:DestinationType>}
     if $args->{dest_type};
 
   # text payload, make sure proper XML encoding
   if (exists $args->{payload}) {
     $soap_msg 
-      .= q{<TextPayload>}
+      .= q{<b:TextPayload>}
       .  _exml($args->{payload} || '')
-      .  q{</TextPayload>};
+      .  q{</b:TextPayload>};
   }
   
   # message trailer
-  $soap_msg .= "</$wrapper>" if $wrapper;
+  $soap_msg .= "</b:$wrapper>" if $wrapper;
   $soap_msg
-    .= qq{</$args->{mesg}>}
+    .= qq{</b:$args->{mesg}>}
     .  q{</s:Body></s:Envelope>};
 
   # wire-level frame: lenght prefix + payload

@@ -32,8 +32,8 @@ is($sb->state, 'idle',        '... proper initial state');
 my $r = $sb->publish({ topic => 'test', payload => 'me' });
 my $e = $!;
 ok($r, 'We get an error back if publish without connected SB');
-ok($r == ENOTCONN,     '... proper error, ENOTCONN');
-is($e, $r,           '... also set $!');
+ok($r == ENOTCONN, '... proper error, ENOTCONN');
+is($e, $r,         '... also set $!');
 is($sb->error, $r, '... and $self->error');
 
 # Connect
@@ -49,11 +49,11 @@ $r = $sb->publish({
 });
 ok(! defined($r), 'Publish went prety well');
 ok(
-  $msg =~ m!<Publish xmlns=["']http://services.sapo.pt/broker["']><BrokerMessage!,
+  $msg =~ m!<b:Publish xmlns:b=["']http://services.sapo.pt/broker["']><b:BrokerMessage!,
   '... correct message type',
 );
-ok($msg =~ m!DestinationName>/test</DestinationName!, '... proper destination');
-ok($msg =~ m!<TextPayload>me</TextPayload>!,          '... proper payload');
+ok($msg =~ m!<b:DestinationName>/test</b:DestinationName!, '... proper destination');
+ok($msg =~ m!<b:TextPayload>me</b:TextPayload>!,           '... proper payload');
 
 # Publish stuff with ack
 $msg = '';
@@ -64,11 +64,11 @@ $r = $sb->publish({
 });
 ok(! defined($r), 'Publish went prety well');
 ok(
-  $msg =~ m!<Publish action-id=["'][\w\d-]+["'] xmlns=["']http://services.sapo.pt/broker["']><BrokerMessage!,
+  $msg =~ m!<b:Publish b:action-id=["'][\w\d-]+["'] xmlns:b=["']http://services.sapo.pt/broker["']><b:BrokerMessage!,
   '... correct message type',
 );
-ok($msg =~ m!DestinationName>/test</DestinationName!, '... proper destination');
-ok($msg =~ m!<TextPayload>me</TextPayload>!,          '... proper payload');
+ok($msg =~ m!<b:DestinationName>/test</b:DestinationName!, '... proper destination');
+ok($msg =~ m!<b:TextPayload>me</b:TextPayload>!,           '... proper payload');
 
 # Publish stuff - emtpy payload
 $msg = '';
@@ -77,8 +77,8 @@ $r = $sb->publish({
   payload => '',
 });
 ok(! defined($r), 'Empty payload publish went prety well');
-ok($msg =~ m!DestinationName>/test</DestinationName!, '... proper destination');
-ok($msg =~ m!<TextPayload></TextPayload>!,          '... proper payload');
+ok($msg =~ m!<b:DestinationName>/test</b:DestinationName!, '... proper destination');
+ok($msg =~ m!<b:TextPayload></b:TextPayload>!,             '... proper payload');
 
 # Publish stuff - undef payload
 $msg = '';
@@ -87,8 +87,8 @@ $r = $sb->publish({
   payload => undef,
 });
 ok(! defined($r), 'Undefined payload publish went prety well');
-ok($msg =~ m!DestinationName>/test2</DestinationName!, '... proper destination');
-ok($msg =~ m!<TextPayload></TextPayload>!,            '... proper payload');
+ok($msg =~ m!<b:DestinationName>/test2</b:DestinationName!, '... proper destination');
+ok($msg =~ m!<b:TextPayload></b:TextPayload>!,              '... proper payload');
 
 # TODO: add tests for well formed XML and probably some XPath goodness
 
@@ -118,15 +118,15 @@ is($sb_consumer->info, $$ % 13,        '... proper connection state');
 $r = $sb_consumer->subscribe({ topic => '/test2' });
 ok(! defined($r), 'Sent subscription request');
 ok(
-  $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']><De!,
+  $msg_s =~ m!<b:Notify xmlns:b=["']http://services.sapo.pt/broker["']><b:De!,
   '... correct message type',
 );
 ok(
-  $msg_s =~ m!<DestinationName>/test2</DestinationName>!,
+  $msg_s =~ m!<b:DestinationName>/test2</b:DestinationName>!,
   '... correct destination /test2',
 );
 ok(
-  $msg_s =~ m!<DestinationType>TOPIC</DestinationType>!,
+  $msg_s =~ m!<b:DestinationType>TOPIC</b:DestinationType>!,
   '... correct type TOPIC',
 );
 
@@ -134,15 +134,15 @@ ok(
 $r = $sb_consumer->subscribe({ topic => '/test2', ack => 1 });
 ok(! defined($r), 'Sent subscription request');
 ok(
-  $msg_s =~ m!<Notify action-id=["'][\w\d-]+["'] xmlns=["']http://services.sapo.pt/broker["']><De!,
-  '... correct message type',
+  $msg_s =~ m!<b:Notify b:action-id=["'][\w\d-]+["'] xmlns:b=["']http://services.sapo.pt/broker["']>!,
+  "... correct message type ($msg_s)",
 );
 ok(
-  $msg_s =~ m!<DestinationName>/test2</DestinationName>!,
+  $msg_s =~ m!<b:DestinationName>/test2</b:DestinationName>!,
   '... correct destination /test2',
 );
 ok(
-  $msg_s =~ m!<DestinationType>TOPIC</DestinationType>!,
+  $msg_s =~ m!<b:DestinationType>TOPIC</b:DestinationType>!,
   '... correct type TOPIC',
 );
 
@@ -150,15 +150,15 @@ ok(
 $r = $sb_consumer->subscribe({ topic => '/test3', as_queue => 'q3' });
 ok(! defined($r), 'Sent subscription request for topic as queue');
 ok(
-  $msg_s =~ m!<Notify xmlns=["']http://services.sapo.pt/broker["']><De!,
+  $msg_s =~ m!<b:Notify xmlns:b=["']http://services.sapo.pt/broker["']><b:De!,
   '... correct message type',
 );
 ok(
-  $msg_s =~ m!<DestinationName>q3@/test3</DestinationName>!,
+  $msg_s =~ m!<b:DestinationName>q3@/test3</b:DestinationName>!,
   '... correct destination q3@/test3',
 );
 ok(
-  $msg_s =~ m!<DestinationType>TOPIC_AS_QUEUE</DestinationType>!,
+  $msg_s =~ m!<b:DestinationType>TOPIC_AS_QUEUE</b:DestinationType>!,
   '... correct type TOPIC_AS_QUEUE',
 );
 
@@ -166,15 +166,15 @@ ok(
 $r = $sb_consumer->subscribe({ topic => '/test3', as_queue => 'q3', ack => 1 });
 ok(! defined($r), 'Sent subscription request for topic as queue');
 ok(
-  $msg_s =~ m!<Notify action-id=["'][\w\d-]+["'] xmlns=["']http://services.sapo.pt/broker["']><De!,
+  $msg_s =~ m!<b:Notify b:action-id=["'][\w\d-]+["'] xmlns:b=["']http://services.sapo.pt/broker["']>!,
   '... correct message type',
 );
 ok(
-  $msg_s =~ m!<DestinationName>q3@/test3</DestinationName>!,
+  $msg_s =~ m!<b:DestinationName>q3@/test3</b:DestinationName>!,
   '... correct destination q3@/test3',
 );
 ok(
-  $msg_s =~ m!<DestinationType>TOPIC_AS_QUEUE</DestinationType>!,
+  $msg_s =~ m!<b:DestinationType>TOPIC_AS_QUEUE</b:DestinationType>!,
   '... correct type TOPIC_AS_QUEUE',
 );
 
