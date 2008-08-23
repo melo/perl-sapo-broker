@@ -135,7 +135,7 @@ $r = $sb_consumer->subscribe({ topic => '/test2', ack => 1 });
 ok(! defined($r), 'Sent subscription request');
 ok(
   $msg_s =~ m!<b:Notify b:action-id=["'][\w\d-]+["'] xmlns:b=["']http://services.sapo.pt/broker["']>!,
-  "... correct message type ($msg_s)",
+  "... correct message type",
 );
 ok(
   $msg_s =~ m!<b:DestinationName>/test2</b:DestinationName>!,
@@ -199,7 +199,7 @@ my $valid_topic = '/real_test';
 my ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp);
 $r = $sb_consumer->subscribe({
   topic => $valid_topic,
-  callback => sub {
+  on_message => sub {
     ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp) = @_;
     return;
   },
@@ -245,7 +245,7 @@ my ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc, $cb2_bp);
 $r = $sb_consumer->subscribe({
   topic => $valid_topic,
   as_queue => 'q1',
-  callback => sub {
+  on_message => sub {
     ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc, $cb2_bp) = @_;
     return;
   },
@@ -321,8 +321,8 @@ throws_ok sub { $sb->subscribe({ topic => '' }) },
 throws_ok sub { $sb->subscribe({ topic => '/test', as_queue => '' }) },
           qr/Missing valid parameter 'as_queue'/,
           '... empty queue name, dies properly';
-throws_ok sub { $sb->subscribe({ topic => '/test', callback => '' }) },
-          qr/Parameter 'callback' must be a CODE ref, /,
+throws_ok sub { $sb->subscribe({ topic => '/test', on_message => '' }) },
+          qr/Parameter 'on_message' must be a CODE ref, /,
           '... non-CODE-ref callback, dies properly';
 TODO: {
   todo_skip('Not implemented yet', 1);

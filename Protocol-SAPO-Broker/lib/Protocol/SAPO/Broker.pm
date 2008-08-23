@@ -67,7 +67,9 @@ sub disconnect {
 }
 
 sub publish {
-  my ($self, $args) = @_;
+  my $self = shift;
+  
+  my $args = _parse_common_args(@_);
   
   croak("Missing required parameter 'topic', ")
     unless $args->{topic};
@@ -75,45 +77,58 @@ sub publish {
     unless exists $args->{payload};
 
   return $self->_send_message({
+    %$args,
     mesg      => 'Publish',
-    dest_name => $args->{topic},
-    payload   => $args->{payload},
     wrapper   => 'BrokerMessage',
-    ack       => $args->{ack},
   });
 }
 
 sub subscribe {
-  my ($self, $args) = @_;
-
+  my $self = shift;
+  my $args = _parse_common_args(@_);
+  
   croak("Missing required parameter 'topic', ")
     unless $args->{topic};
-  croak("Missing valid parameter 'as_queue', ")
-    if exists $args->{as_queue} && !$args->{as_queue};
 
-  my $dest_name = $args->{topic};
+  my $dest_name = delete $args->{topic};
   my $dest_type = 'TOPIC';
   
-  if (exists $args->{callback}) {
-    my $cb = $args->{callback};
-    croak("Parameter 'callback' must be a CODE ref, ")
-      unless ref($cb) eq 'CODE';
-    
+  if (my $cb = delete $args->{on_message}) {
     my $subs = $self->{subs}{$dest_name} ||= [];
     push @$subs, $cb;
   }
 
-  if (my $queue_name = $args->{as_queue}) {
+  if (my $queue_name = delete $args->{as_queue}) {
     $dest_name = "$queue_name\@$dest_name";
     $dest_type = 'TOPIC_AS_QUEUE';
   }
   
   return $self->_send_message({
+    %$args,
     mesg      => 'Notify',
-    dest_name => $dest_name,
+    topic     => $dest_name,
     dest_type => $dest_type,
-    ack       => $args->{ack},
   });
+}
+
+sub _parse_common_args {
+  my ($args) = @_;
+  my %clean;
+  
+  foreach my $f (qw( topic payload ack as_queue 
+                     on_message on_success on_error )) {
+    $clean{$f} = $args->{$f} if exists $args->{$f};
+  }
+  
+  foreach my $f (qw( on_success on_error on_message )) {
+    croak("Parameter '$f' must be a CODE ref, ")
+      if exists $clean{$f} && ref($clean{$f}) ne 'CODE';
+  }
+
+  croak("Missing valid parameter 'as_queue', ")
+    if exists $clean{as_queue} && !$clean{as_queue};
+  
+  return \%clean;
 }
 
 
@@ -146,7 +161,7 @@ sub _send_message {
   
   # Order of the nodes is important! Specified as a SEQUENCE-OF in the WSDL
   # Deal with destination name (mandatory) and type (optional)
-  $soap_msg .= qq{<b:DestinationName>$args->{dest_name}</b:DestinationName>};
+  $soap_msg .= qq{<b:DestinationName>$args->{topic}</b:DestinationName>};
   $soap_msg .= qq{<b:DestinationType>$args->{dest_type}</b:DestinationType>}
     if $args->{dest_type};
 
