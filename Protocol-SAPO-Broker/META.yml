@@ -16,6 +16,8 @@ no_index:
 requires:
   Carp::Clan: 0
   Errno: 0
+  XML::LibXML: 0
 resources:
   license: http://dev.perl.org/licenses/
+  repository: http://github.com/melo/perl-sapo-broker
 version: 0.01
