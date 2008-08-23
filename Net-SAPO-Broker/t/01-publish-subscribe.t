@@ -16,12 +16,15 @@ SKIP: {
     30,
   ) unless $ENV{TEST_SAPO_BROKER};
   
-  my $ukn_payload;
+  my ($ukn_payload, $ukn_message);
   my $sb = Net::SAPO::Broker->new({
     auto_connect => 0,
     on_unknown_payload => sub {
       my (undef, $ukn_payload) = @_;
     },
+    on_unknown_message => sub {
+      my (undef, $ukn_message) = @_;
+    }
   });
   ok($sb);
   is($sb->state, 'idle', 'Idle, not connected');
@@ -131,8 +134,8 @@ SKIP: {
   ok(!defined($ukn_payload_c), 'No unimplemented messages');
   
   # Clear status
-  $recv_mesg = $unmatched = undef;
-  
+  $recv_mesg = $ukn_message = undef;
+
   # Publish something on foo and bar with ack's on
   $sb->publish({
     topic   => '/test/foo',
@@ -148,7 +151,7 @@ SKIP: {
   
   # Waits for the acks
   $sb->deliver_messages(1);
-  ok(!defined($ukn_payload), 'Wait for acks, no unimplemented messages');
+  ok(!defined($ukn_message), 'Wait for acks, no unimplemented messages');
   
   # Waits for messages and delivers it
   # It will wait at most 1 seconds
