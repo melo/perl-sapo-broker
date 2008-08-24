@@ -115,7 +115,7 @@ sub _parse_common_args {
   my ($args) = @_;
   my %clean;
   
-  foreach my $f (qw( topic payload ack as_queue 
+  foreach my $f (qw( topic payload ack as_queue id
                      on_message on_success on_error )) {
     $clean{$f} = $args->{$f} if exists $args->{$f};
   }
@@ -133,7 +133,6 @@ sub _parse_common_args {
   # Check for valid queue ID
   croak("Missing valid parameter 'as_queue', ")
     if exists $clean{as_queue} && !$clean{as_queue};
-  
   
   return \%clean;
 }
@@ -154,8 +153,14 @@ sub _send_message {
   my $mesg = $args->{mesg};
   my $id   = $args->{id};
   if ($args->{ack}) {
-    $id ||= _gen_action_id();
+    $id = _gen_action_id() unless $id;
     $mesg .= qq{ b:action-id="$id"};
+
+    # We shall be waiting for your call
+    $self->{id_callbacks}{$id} = [
+      $args->{on_success},
+      $args->{on_error},
+    ];    
   }
   $soap_msg .= qq{<b:$mesg xmlns:b="http://services.sapo.pt/broker">};
   
@@ -225,6 +230,7 @@ sub _process_message {
   
   my $node_name = $mesg->localname;
   return $self->_process_notification($mesg, $xdoc, $bp) if $node_name eq 'Notification';
+  return $self->_process_accepted($mesg, $xdoc, $bp)     if $node_name eq 'Accepted';
   
   return $self->_optional_callback('unknown_message', $mesg, $payload);
 }
@@ -246,14 +252,40 @@ sub _process_notification {
   return;
 }
 
+sub _process_accepted {
+  my ($self, $mesg, $xdoc, $bp) = @_;
+
+  my ($ack) = $xdoc->findnodes("//$bp:Accepted", $mesg);
+  my $id = $ack->getAttributeNS('http://services.sapo.pt/broker', 'action-id');
+  
+  my $cbs = delete $self->{id_callbacks}{$id};
+  $cbs->[0]->($self, $id, $mesg, $xdoc, $bp) if $cbs && $cbs->[0];
+  
+  return;
+}
+
 sub _process_fault {
   my ($self, $fault, $xdoc) = @_;
   my %fault;
   
-  foreach my $elem (['Code', 'Value'], ['Reason', 'Text'], ['Detail']) {
-    my $field = lc($elem->[0]);
-    my $xpath = join('/', map { "soap:$_" } @$elem);
+  my %fields = (
+    code    => ['Code', 'Value'],
+    subcode => ['Code', 'Subcode', 'Value'],
+    reason  => ['Reason', 'Text'],
+    detail  => ['Detail'],
+  );
+  
+  while (my ($field, $xp) = each %fields) {
+    my $xpath = join('/', map { "soap:$_" } @$xp);
     $fault{$field} = $xdoc->findvalue($xpath, $fault);
+  }
+  
+  if ($fault{subcode}) {
+    my $id = $fault{subcode};
+    
+    my $cbs = delete $self->{id_callbacks}{$id};
+      
+    $cbs->[1]->($self, $id, $fault, $xdoc) if $cbs && $cbs->[1];
   }
   
   return $self->_optional_callback('fault', \%fault, $xdoc);

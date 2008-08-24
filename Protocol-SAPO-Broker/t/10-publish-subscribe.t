@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 97;
+use Test::More tests => 144;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -56,6 +56,7 @@ ok($msg =~ m!<b:DestinationName>/test</b:DestinationName!, '... proper destinati
 ok($msg =~ m!<b:TextPayload>me</b:TextPayload>!,           '... proper payload');
 
 # Publish stuff with ack
+my $ack_id;
 $msg = '';
 $r = $sb->publish({
   topic => '/test',
@@ -64,11 +65,29 @@ $r = $sb->publish({
 });
 ok(! defined($r), 'Publish went prety well');
 ok(
-  $msg =~ m!<b:Publish b:action-id=["'][\w\d-]+["'] xmlns:b=["']http://services.sapo.pt/broker["']><b:BrokerMessage!,
+  $msg =~ m!<b:Publish b:action-id=["']([\w\d-]+)["'] xmlns:b=["']http://services.sapo.pt/broker["']><b:BrokerMessage!,
   '... correct message type',
 );
+$ack_id = $1;
 ok($msg =~ m!<b:DestinationName>/test</b:DestinationName!, '... proper destination');
 ok($msg =~ m!<b:TextPayload>me</b:TextPayload>!,           '... proper payload');
+
+# Send the respective accepted response
+lives_ok {
+  $sb->incoming_data(
+    _build_frame(
+      _mk_accepted($ack_id)
+    )
+  )
+} 'The accepted response is processed ok';
+
+lives_ok {
+  $sb->incoming_data(
+    _build_frame(
+      _mk_accepted($ack_id)
+    )
+  )
+} 'A double accepted response is also ok';
 
 # Publish stuff - emtpy payload
 $msg = '';
@@ -131,12 +150,19 @@ ok(
 );
 
 # Subscribe a topic with ack
-$r = $sb_consumer->subscribe({ topic => '/test2', ack => 1 });
+my $ack_error;
+$r = $sb_consumer->subscribe({
+  topic => '/test2',
+  on_error => sub {
+    (undef, $ack_error) = @_;
+  },
+});
 ok(! defined($r), 'Sent subscription request');
 ok(
-  $msg_s =~ m!<b:Notify b:action-id=["'][\w\d-]+["'] xmlns:b=["']http://services.sapo.pt/broker["']>!,
+  $msg_s =~ m!<b:Notify b:action-id=["']([\w\d-]+)["'] xmlns:b=["']http://services.sapo.pt/broker["']>!,
   "... correct message type",
 );
+$ack_id = $1;
 ok(
   $msg_s =~ m!<b:DestinationName>/test2</b:DestinationName>!,
   '... correct destination /test2',
@@ -145,6 +171,16 @@ ok(
   $msg_s =~ m!<b:DestinationType>TOPIC</b:DestinationType>!,
   '... correct type TOPIC',
 );
+
+$r = $sb_consumer->incoming_data(
+  _build_frame(
+    _mk_fault($ack_id)
+  )
+);
+ok(!$r, 'SOAP Fault processed ok');
+ok($ack_error, 'On error callback called');
+is($ack_error, $ack_id, '... with the proper ID');
+
 
 # Subscribe a topic as queue
 $r = $sb_consumer->subscribe({ topic => '/test3', as_queue => 'q3' });
@@ -280,6 +316,227 @@ is($cb1_bp,   $cb2_bp,   '... and same Broker namespace prefix');
 is($cb1_sb,   $cb2_sb,   '... and even the same Protocol object');
 
 
+# Publish with on_success callback
+my $suc_id;
+$r = $sb->publish({
+  topic => '/test/with_success_callback',
+  payload => $$,
+  on_success => sub {
+    (undef, $suc_id) = @_;
+  }
+});
+ok(!$r, 'Publish with on_success callback ok');
+ok(
+  $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
+  "Message with action_id so ack requested",
+);
+$ack_id = $1;
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_accepted($ack_id)
+  )
+);
+ok($suc_id, 'Success callback called');
+is($suc_id, $ack_id, '... with the proper value');
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_accepted($ack_id)
+  )
+);
+ok(
+  !defined($suc_id),
+  'Success callback called only once, second Accepted msg ignored'
+);
+
+
+# Publish with on_success callback but receive a fault
+$r = $sb->publish({
+  topic => '/test/with_success_callback',
+  payload => $$,
+  on_success => sub {
+    (undef, $suc_id) = @_;
+  }
+});
+ok(!$r, 'Publish with on_success callback ok');
+ok(
+  $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
+  "Message with action_id so ack requested",
+);
+$ack_id = $1;
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_fault($ack_id)
+  )
+);
+ok(!defined($suc_id), 'Success callback not called');
+
+
+# # Publish with on_success callback but receive a fault without ID
+$r = $sb->publish({
+  topic => '/test/with_success_callback',
+  payload => $$,
+  on_success => sub {
+    (undef, $suc_id) = @_;
+  }
+});
+ok(!$r, 'Publish with on_success callback ok');
+ok(
+  $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
+  "Message with action_id so ack requested",
+);
+$ack_id = $1;
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_fault()
+  )
+);
+ok(!defined($suc_id), 'Success callback not called');
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_accepted($ack_id)
+  )
+);
+ok($suc_id, 'Success callback called');
+is($suc_id, $ack_id, '... with the proper value');
+
+
+# Subscribe with on_success callback and a real ID
+my $my_id = '12314232';
+$r = $sb->subscribe({
+  topic => '/test/with_success_callback_and_id',
+  id    => $my_id,
+  on_success => sub {
+    (undef, $suc_id) = @_;
+  }
+});
+ok(!$r, 'Subscribe with on_success callback ok');
+ok(
+  $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
+  "Message with action_id so ack requested",
+);
+$ack_id = $1;
+is($ack_id, $my_id, '... with the expected value');
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_accepted($ack_id)
+  )
+);
+ok($suc_id, 'Success callback called');
+is($suc_id, $ack_id, '... with the proper value');
+
+
+# Publish with both on_success and on_error callback
+$suc_id = $ack_id = $ack_error = undef;
+$r = $sb->publish({
+  topic   => '/test/multiple1',
+  payload => $my_id,
+  on_success => sub {
+    (undef, $suc_id) = @_;
+  },
+  on_error => sub {
+    (undef, $ack_error) = @_;
+  },
+});
+ok(!$r, 'Subscribe with on_success and on_error callbacks ok');
+ok(
+  $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
+  "Message with action_id so ack requested",
+);
+$ack_id = $1;
+
+$suc_id = $ack_error = undef;
+$r = $sb->incoming_data(
+  _build_frame(
+    _mk_accepted(1)
+  )
+);
+ok(!defined($r), 'Incoming accept with wrong id ok');
+ok(!defined($suc_id),    '... success callback not called');
+ok(!defined($ack_error), '... error callback not called');
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_fault(2)
+  )
+);
+ok(!defined($r), 'Incoming fault with wrong id ok');
+ok(!defined($suc_id),    '... success callback not called');
+ok(!defined($ack_error), '... error callback not called');
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_fault($ack_id)
+  )
+);
+ok(!defined($r), 'Incoming fault with correct id ok');
+ok(!defined($suc_id),    '... success callback not called');
+ok(defined($ack_error),  '... error callback was called');
+is($ack_error, $ack_id,  '... with the proper value');
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_accepted($ack_id)
+  )
+);
+ok(!defined($r), 'Incoming accept with correct id after the fault ok');
+ok(!defined($suc_id),    '... success callback not called');
+ok(!defined($ack_error), '... error callback not called');
+
+$suc_id = $ack_id = $ack_error = undef;
+$r = $sb->publish({
+  topic   => '/test/multiple1',
+  payload => $my_id,
+  on_success => sub {
+    (undef, $suc_id) = @_;
+  },
+  on_error => sub {
+    (undef, $ack_error) = @_;
+  },
+});
+ok(!$r, 'Subscribe with on_success and on_error callbacks ok');
+ok(
+  $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
+  "Message with action_id so ack requested",
+);
+$ack_id = $1;
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_accepted($ack_id)
+  )
+);
+ok(!defined($r), 'Incoming accept with correct id after the fault ok');
+ok(defined($suc_id),     '... success callback was called');
+is($suc_id, $ack_id,     '... with the proper value');
+ok(!defined($ack_error), '... error callback not called');
+
+$suc_id = $ack_error = undef;
+$sb->incoming_data(
+  _build_frame(
+    _mk_fault($ack_id)
+  )
+);
+ok(!defined($r), 'Incoming fault with correct id ok');
+ok(!defined($suc_id),    '... success callback not called');
+ok(!defined($ack_error), '... error callback not called');
+
+
 # publish() (wrong API, failures)
 ok($sb, "Get ready to test publish() API failures");
 throws_ok sub { $sb->publish() },
@@ -336,6 +593,7 @@ TODO: {
 
 sub _mk_notification {
   my ($topic, $payload) = @_;
+  
   my $msg = <<EOF;
     <soap:Envelope
     	xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
@@ -365,6 +623,65 @@ EOF
 
   $msg =~ s/##MYTOPIC##/$topic/g;
   $msg =~ s/##MYPAYLOAD##/Protocol::SAPO::Broker::_exml($payload)/ge;
+  
+  return $msg;
+}
+
+sub _mk_accepted {
+  my ($id) = @_;
+  
+  my $msg = <<EOF;
+    <soap:Envelope
+    	xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+    	xmlns:wsa="http://www.w3.org/2005/08/addressing"
+    	xmlns:mq="http://services.sapo.pt/broker">
+    	<soap:Header>
+    		<wsa:From>
+    			<wsa:Address>broker://agent/agent-name/##MYTOPIC##</wsa:Address>
+    		</wsa:From>
+    		<wsa:Action>http://services.sapo.pt/broker/notification/</wsa:Action>
+    		<wsa:MessageID>http://services.sapo.pt/broker/message/ID:1276859168</wsa:MessageID>
+    	</soap:Header>
+    	<soap:Body>
+    		<mq:Accepted mq:action-id="##MYID##" />
+    	</soap:Body>
+    </soap:Envelope>
+EOF
+
+  $msg =~ s/##MYID##/$id/g;
+  
+  return $msg;
+}
+
+sub _mk_fault {
+  my ($id) = @_;
+
+  my $sub_fault = <<SF;
+        <soap:Subcode>
+          <soap:Value>##MYID##</soap:Value>
+        </soap:Subcode>
+SF
+  $sub_fault = '' unless defined $id;
+  
+  my $msg = <<"EOF";
+    <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://www.w3.org/2005/08/addressing" xmlns:mq="http://services.sapo.pt/broker">
+    	<soap:Header/>
+    	<soap:Body>
+    		<soap:Fault>
+    			<soap:Code>
+    			  $sub_fault
+    				<soap:Value>code is soap:Sender</soap:Value>
+    			</soap:Code>
+    			<soap:Reason>
+    				<soap:Text>text is the error message</soap:Text>
+    			</soap:Reason>
+    			<soap:Detail>detail is cool</soap:Detail>
+    		</soap:Fault>
+    	</soap:Body>
+    </soap:Envelope>
+EOF
+
+  $msg =~ s/##MYID##/$id/g if $id;
   
   return $msg;
 }
