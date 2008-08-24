@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 47;
+use Test::More tests => 46;
 
 BEGIN {
 	use_ok( 'Net::SAPO::Broker' );
@@ -16,15 +16,8 @@ SKIP: {
     30,
   ) unless $ENV{TEST_SAPO_BROKER};
   
-  my ($ukn_payload, $ukn_message);
   my $sb = Net::SAPO::Broker->new({
     auto_connect => 0,
-    on_unknown_payload => sub {
-      my (undef, $ukn_payload) = @_;
-    },
-    on_unknown_message => sub {
-      my (undef, $ukn_message) = @_;
-    }
   });
   ok($sb);
   is($sb->state, 'idle', 'Idle, not connected');
@@ -38,8 +31,15 @@ SKIP: {
   $sb->connect;
   is($sb->state, 'connected', 'User started connection ok');
 
-
-  $sb = Net::SAPO::Broker->new;
+  my ($ukn_payload, $ukn_message);
+  $sb = Net::SAPO::Broker->new({
+    on_unknown_payload => sub {
+      (undef, $ukn_payload) = @_;
+    },
+    on_unknown_message => sub {
+      (undef, $ukn_message) = @_;
+    },
+  });
   ok($sb, 'Seccond connection ok');
   is($sb->state, 'connected', 'Good connection now');
 
@@ -65,10 +65,10 @@ SKIP: {
       return;
     },
     on_unknown_payload => sub {
-      my (undef, $ukn_payload_c) = @_;
+      (undef, $ukn_payload_c) = @_;
     },
     on_unknown_message => sub {
-      my (undef, $ukn_message_c) = @_;
+      (undef, $ukn_message_c) = @_;
     },
   });  
   ok($sbc, 'Consumer connection ok');
@@ -77,7 +77,7 @@ SKIP: {
   my $recv_mesg;
   $r = $sbc->subscribe({
     topic    => '/test/foo',
-    callback => sub { (undef, $recv_mesg) = @_ },
+    on_message => sub { (undef, $recv_mesg) = @_ },
   });
   ok(!defined($r), 'Subscribe succeeded');
   
@@ -176,24 +176,25 @@ SKIP: {
     ack     => 1,
   });
 
-  my ($suc_topic, $suc_payload);
+  my $suc_id;
+  my $my_id = 'my_pub_id_1';
   $sb->publish({
     topic   => '/test/bar',
     payload => $$, # PID
+    id => $my_id,
     on_success => sub {
-      my (undef, $suc_topic, $suc_payload) = @_;
+      (undef, $suc_id) = @_;
     },
   });
 
   # Check for messsages from the publish() method, we should receive acks
-  $ukn_message = $ukn_payload = undef;
+  $ukn_message = $ukn_payload = $suc_id = undef;
   $sb->deliver_messages(1);
-  ok(!defined($ukn_message), 'No unknown messages after publish');
+  ok(!defined($ukn_message), '******* No unknown messages after publish');
   ok(!defined($ukn_payload), '... nor unknown payloads');
-    
-  ok($suc_topic, 'Proper sucess message called');
-  is($suc_topic,   '/test/foo', '... with the correct topic'); 
-  is($suc_payload, $$,          '... and the correct payload');   
+  
+  ok($suc_id, 'Proper sucess message called');
+  is($suc_id, $my_id, '... with the correct topic'); 
   
   # Waits for messages and delivers it
   # It will wait at most 1 seconds
