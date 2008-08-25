@@ -101,16 +101,16 @@ sub subscribe {
   # It will only be used if ack's where requested!
   $args->{ack_id} = delete $args->{id};
   
-  if (my $cb = delete $args->{on_message}) {
-    my $subs = $self->{subs}{$dest_name} ||= [];
-    push @$subs, $cb;
-  }
-
   if (my $queue_name = delete $args->{as_queue}) {
     $dest_name = "$queue_name\@$dest_name";
     $dest_type = 'TOPIC_AS_QUEUE';
   }
   
+  if (my $cb = delete $args->{on_message}) {
+    my $subs = $self->{subs}{$dest_name} ||= [];
+    push @$subs, $cb;
+  }
+
   return $self->_send_message({
     %$args,
     mesg      => 'Notify',
