@@ -19,4 +19,5 @@ requires:
   Protocol::SAPO::Broker: 0.01
 resources:
   license: http://dev.perl.org/licenses/
+  repository: http://github.com/melo/perl-sapo-broker
 version: 0.01
