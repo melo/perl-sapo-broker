@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 144;
+use Test::More tests => 145;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -423,6 +423,10 @@ ok(!$r, 'Subscribe with on_success callback ok');
 ok(
   $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
   "Message with action_id so ack requested",
+);
+ok(
+  $msg !~ m/:MessageId>/,
+  "Subscribe with ack_id does not generate a MessageId field",
 );
 $ack_id = $1;
 is($ack_id, $my_id, '... with the expected value');

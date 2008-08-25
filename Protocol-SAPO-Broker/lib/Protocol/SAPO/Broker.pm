@@ -76,6 +76,10 @@ sub publish {
   croak("Missing required parameter 'payload', ")
     unless exists $args->{payload};
 
+  # If present the message ID is also used as ack_id
+  # It will only be used if ack's where requested!
+  $args->{ack_id} = $args->{id};
+
   return $self->_send_message({
     %$args,
     mesg      => 'Publish',
@@ -92,6 +96,10 @@ sub subscribe {
 
   my $dest_name = delete $args->{topic};
   my $dest_type = 'TOPIC';
+  
+  # The ID is to be used as ack_id only
+  # It will only be used if ack's where requested!
+  $args->{ack_id} = delete $args->{id};
   
   if (my $cb = delete $args->{on_message}) {
     my $subs = $self->{subs}{$dest_name} ||= [];
@@ -151,13 +159,13 @@ sub _send_message {
   
   # Add message type
   my $mesg = $args->{mesg};
-  my $id   = $args->{id};
   if ($args->{ack}) {
-    $id = _gen_action_id() unless $id;
-    $mesg .= qq{ b:action-id="$id"};
+    my $ack_id = $args->{ack_id};
+    $ack_id = _gen_action_id() unless $ack_id;
+    $mesg .= qq{ b:action-id="$ack_id"};
 
     # We shall be waiting for your call
-    $self->{id_callbacks}{$id} = [
+    $self->{id_callbacks}{$ack_id} = [
       $args->{on_success},
       $args->{on_error},
     ];    
@@ -169,6 +177,7 @@ sub _send_message {
   $soap_msg .= "<b:$wrapper>" if $wrapper;
   
   # Generate MessageId header
+  my $id = $args->{id};
   $soap_msg .= qq{<b:MessageId>$id</b:MessageId>} if $id;
   
   # Order of the nodes is important! Specified as a SEQUENCE-OF in the WSDL
