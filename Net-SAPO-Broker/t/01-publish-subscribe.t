@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 46;
+use Test::More tests => 47;
 
 BEGIN {
 	use_ok( 'Net::SAPO::Broker' );
@@ -113,6 +113,7 @@ SKIP: {
     topic    => '/test/bar',
   });
   ok(!defined($r), 'Subscribe succeeded');
+  sleep(1); # Prevent race condition, see tests below
   
   # Clear subscriber status
   $recv_mesg = $unmatched_c = $ukn_message_c = $ukn_payload_c = undef;
@@ -190,7 +191,7 @@ SKIP: {
   # Check for messsages from the publish() method, we should receive acks
   $ukn_message = $ukn_payload = $suc_id = undef;
   $sb->deliver_messages(1);
-  ok(!defined($ukn_message), '******* No unknown messages after publish');
+  ok(!defined($ukn_message), 'No unknown messages after publish');
   ok(!defined($ukn_payload), '... nor unknown payloads');
   
   ok($suc_id, 'Proper sucess message called');
@@ -203,5 +204,33 @@ SKIP: {
   is($unmatched_c, $$, '... and it has the proper payload');
   ok($recv_mesg, "Got a match caugth by the specific handler");
   is($recv_mesg, $$, '... and it has the proper payload');
-  ok(!defined($ukn_payload_c), 'No unimplemented messages');  
+  ok(!defined($ukn_payload_c), 'No unimplemented messages');
+  
+  # Test race condition
+  $recv_mesg = undef;
+  $sbc->subscribe({
+    topic => '/test/xpto',
+    queue => 'q',
+    on_message => sub { (undef, $recv_mesg) = @_ },
+  });
+  $sb->publish({
+    topic => '/test/xpto',
+    payload => $$,
+  });
+  $sbc->deliver_messages(1);
+  ok(!defined($recv_mesg), 'Quick subscribe + publish can miss messages');
+
+  $recv_mesg = undef;
+  $sbc->subscribe({
+    topic => '/test/ypto',
+    queue => 'q',
+    wait_for_confirmation => 1,
+    on_message => sub { (undef, $recv_mesg) = @_ },
+  });
+  $sb->publish({
+    topic => '/test/xpto',
+    payload => $$,
+  });
+  $sbc->deliver_messages(1);
+  ok(defined($recv_mesg), 'Quick subscribe with confirmation + publish: no missed messages');
 }
