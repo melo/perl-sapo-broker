@@ -2,7 +2,7 @@ package Protocol::SAPO::Broker;
 
 use warnings;
 use strict;
-use Carp::Clan qw(Protocol::SAPO::Broker);
+use Carp::Clan qw(::SAPO::Broker$);
 use Errno qw( ENOTCONN EPROTONOSUPPORT );
 use XML::LibXML;
 use XML::LibXML::XPathContext;
