@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 47;
+use Test::More tests => 51;
 
 BEGIN {
 	use_ok( 'Net::SAPO::Broker' );
@@ -13,7 +13,7 @@ diag( "Testing Net::SAPO::Broker $Net::SAPO::Broker::VERSION, Perl $], $^X" );
 SKIP: {
   skip(
     'Net::SAPO::Broker tests require a TEST_SAPO_BROKER ENV with the IP of agent to use',
-    30,
+    50,
   ) unless $ENV{TEST_SAPO_BROKER};
   
   my $sb = Net::SAPO::Broker->new({
@@ -76,7 +76,7 @@ SKIP: {
 
   my $recv_mesg;
   $r = $sbc->subscribe({
-    topic    => '/test/foo',
+    topic      => '/test/foo',
     on_message => sub { (undef, $recv_mesg) = @_ },
   });
   ok(!defined($r), 'Subscribe succeeded');
@@ -209,8 +209,8 @@ SKIP: {
   # Test race condition
   $recv_mesg = undef;
   $sbc->subscribe({
-    topic => '/test/xpto',
-    queue => 'q',
+    topic      => '/test/xpto',
+    as_queue   => 'q',
     on_message => sub { (undef, $recv_mesg) = @_ },
   });
   $sb->publish({
@@ -220,17 +220,46 @@ SKIP: {
   $sbc->deliver_messages(1);
   ok(!defined($recv_mesg), 'Quick subscribe + publish can miss messages');
 
-  $recv_mesg = undef;
+  TODO: {
+    todo_skip('wait_for_confirmation not implemented yet', 1);
+    
+    $sbc->subscribe({
+      topic    => '/test/ypto',
+      as_queue => 'q',
+      wait_for_confirmation => 1,
+      on_message => sub { (undef, $recv_mesg) = @_ },
+    });
+    $sb->publish({
+      topic => '/test/xpto',
+      payload => $$,
+    });
+
+    $recv_mesg = undef;
+    $sbc->deliver_messages(1);
+    ok(defined($recv_mesg), 'Quick subscribe with confirmation + publish: no missed messages');
+  }
+  
+  # Test TOPIC_AS_QUEUE deliverires
+    $ENV{TEST_BROKER_VERBOSE} = 1;
+  my $recv_topic;
   $sbc->subscribe({
-    topic => '/test/ypto',
-    queue => 'q',
-    wait_for_confirmation => 1,
-    on_message => sub { (undef, $recv_mesg) = @_ },
-  });
-  $sb->publish({
-    topic => '/test/xpto',
-    payload => $$,
+    topic      => '/test/taq',
+    as_queue   => 'taq1',
+    on_message => sub {
+      (undef, $recv_mesg, $recv_topic) = @_;
+    },
+    ack => 1,
   });
   $sbc->deliver_messages(1);
-  ok(defined($recv_mesg), 'Quick subscribe with confirmation + publish: no missed messages');
+
+  $sb->publish({
+    topic   => '/test/taq',
+    payload => "$$ $$",
+  });
+  
+  $recv_mesg = $recv_topic = undef;
+  $sbc->deliver_messages(1);
+  ok($recv_mesg, 'Subscriber as queue got 1 message');
+  is($recv_mesg, "$$ $$",           '... with proper payload');
+  is($recv_topic, 'taq1@/test/taq', '... and with proper topic');
 }
