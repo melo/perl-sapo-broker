@@ -42,6 +42,46 @@ usage("Only one off 'subscribe' or 'publish' can be used")
   if $subscribe && $publish;
 usage("Need set of topics to publish/subscribe to") unless @ARGV;
 
+# Start a SAPO Broker connection
+my $sb = Net::SAPO::Broker->new;
+
+# Run the proper role
+if ($subscribe) {
+  subscriber($sb, @ARGV);
+}
+else {
+  publisher($sb, @ARGV);
+}
+
+
+### Roles
+
+sub subscriber {
+  my $sb = shift;
+  
+  foreach my $topic (@_) {
+    $sb->subscribe({
+      topic      => $topic,
+      on_message => sub {
+        my (undef, $payload, $topic) = @_;
+        
+        print <<"        REPORT";
+**** Got message on topic '$topic':
+--- START ---
+$payload
+---- END ---
+
+        REPORT
+      }
+    })
+  }
+  
+  # Temp hack, deliver_messages() should wait forever
+  while (1) { $sb->deliver_messages(5) };
+}
+
+sub publisher {}
+
 
 ### Usage
 
