@@ -87,17 +87,17 @@ sub subscriber {
         my $ts = localtime($now->[0]);
         substr($ts, -5, 0, '.'.substr($now->[1], 0, 4));
         $ts .= sprintf(' (%0.3f elapsed since last message)', $delta) if $delta;
+        
+        my $len = length($payload);
 
-        print <<"        REPORT";
-**** Got message on topic '$topic':
-**** at $ts
-**** rate for topic is $rt
-
---- START ---
-$payload
----- END ---
-
-        REPORT
+        diag("** Got message on topic '$topic':");
+        diag("** at $ts");
+        diag("** rate for topic is $rt");
+        diag();
+        diag("-- Message starts (length $len)");
+        print $payload,"\n";
+        diag("-- Message ends");
+        diag();
       }
     })
   }
