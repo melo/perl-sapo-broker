@@ -194,7 +194,7 @@ sub publisher {
 
 sub queue_remove {
   my $ua = LWP::UserAgent->new;
-  $ua->timeout(2);
+  $ua->timeout(30);
   
   # Hack! Move this to Protocol eventually
   $host ||= '127.0.0.1';
