@@ -456,6 +456,13 @@ sub usage {
         * rate can be decimal value, must be above 0;
         * rate is an approximation, does not take in account over-head;
         * minimal size is 10.
+    
+     Load Collector:
+        --collector   starts a load collector for each topic
+        
+        It will wait for a start of a run using the load generation mode
+        on the same topic. After the end of the run, prints actual rate,
+        missed messages and out-of-order messages.
         
      General options:
         --host        connect to a specific host [defaults to 127.0.0.1]
