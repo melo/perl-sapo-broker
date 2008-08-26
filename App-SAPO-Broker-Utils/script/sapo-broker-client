@@ -31,16 +31,24 @@ foreach my $module (@deps) {
 
 # Parse command line
 
-my ($subscribe, $publish, $queue, $remove, $quiet, $host, $port, $help);
+my (
+  $subscribe, $publish,
+  $queue, $remove,
+  $quiet, $help,
+  $host, $port,
+);
 $subscribe = -1;
 $quiet = 1 unless -t \*STDIN;
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
+  
   "queue=s"   => \$queue,
   "remove"    => \$remove,
+  
   "host=s"    => \$host,
   "port=s"    => \$port,
+  
   "quiet"     => \$quiet,
   "help"      => \$help,
 );
