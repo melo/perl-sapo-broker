@@ -203,11 +203,13 @@ sub queue_remove {
   
   if (! $response->is_success) {
     diag("ERROR while removing queue '$queue'");
-    diag("Full HTTP response: \n",$response->as_string);
+    diag("Remote error response:");
+    diag("   ", $response->content);
     
     exit(1);
   }
   
+  diag("Queue '$queue' deleted successfully");
   return;
 }
 
