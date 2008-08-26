@@ -35,6 +35,7 @@ my (
   $subscribe, $publish,
   $queue, $remove,
   $count, $rate, $size,
+  $collector,
   $quiet, $help,
   $host, $port,
 );
@@ -53,6 +54,8 @@ my $ok = GetOptions(
   "rate=s"    => \$rate,
   "size=s"    => \$size,
   
+  "collector" => \$collector,
+  
   "host=s"    => \$host,
   "port=s"    => \$port,
   
@@ -69,33 +72,57 @@ usage("Invalid --rate, must be greater than 0")
 usage("Minimal payload size is 10")
   if $size < 10;
 
-usage("Load generation and Queue operations do not mix")
-  if $rate && $remove;
-
 usage("The remove operation requires a queue identifier")
   if $remove && !$queue;
 
-usage("Only one off 'subscribe' or 'publish' can be used")
-  if $subscribe && $publish;
+# check for incompatible modes
+my $mode;
 
-usage("Load generation and Basic PubSub operations do not mix")
-  if $rate && ($publish || $subscribe);
+if ($rate) {
+  $mode = "load generation";
+}
+
+if ($remove) {
+  usage("Queue operations and $mode operations are incompatible")
+    if $mode;
+  $mode = 'queue operations';
+}
+
+if ($collector) {
+  usage("Load collector operations and $mode operations are incompatible")
+    if $mode;
+  $mode = 'load collector';
+}
+
+if ($publish || $mode) {
+  usage("Only one off 'subscribe' or 'publish' can be used")
+      if $subscribe && $publish;
+  usage("Basic pubsub operations and $mode operations are incompatible")
+    if $mode && ($subscribe || $publish);
+  $mode = 'basic pubsub';
+}
 
 my @topics = @ARGV;
 @ARGV = ();
-usage("Need set of topics to publish/subscribe to") unless $remove || @topics;
 
 # Run the proper role
 if ($publish) {
+  usage("Need set of topics to publish") unless @topics;
   publisher();
 }
 elsif ($queue && $remove) {
   queue_remove();
 }
 elsif ($rate) {
+  usage("Need set of topics for load generation") unless @topics;
   load_generator();
 }
+elsif ($collector) {
+  usage("Need set of topics for load collection") unless @topics;
+  load_collector();
+}
 else {
+  usage("Need set of topics to subscribe") unless @topics;
   subscriber();
 }
 
@@ -199,6 +226,7 @@ sub load_generator {
   diag("** You can abort with ^C at any time");
 
   diag("** Running....");
+  broadcast($sb, "--- start: count $count rate $rate size $size");
   my $start = [gettimeofday()];  
   my $mesg_number = 0;
   while (1) {
@@ -215,10 +243,97 @@ sub load_generator {
   }
   
   my $actual_rate = $mesg_number / (tv_interval($start) || 1);
+  broadcast($sb, "--- end: actual rate $actual_rate");
   diag('** Done!');
   diag("** Sent $mesg_number messages, requested rate $rate mesg/sec");
   diag("** Actual rate was $actual_rate mesg/sec");
 }
+
+sub load_collector {
+  my %load_stats;
+  
+  my $sb = get_agent_connection();
+  
+  foreach my $topic (@topics) {
+    $sb->subscribe({
+      topic      => $topic,
+      on_success => sub {
+        diag("%% Collecting on topic '$topic'.");
+      },
+      on_error => sub {
+        diag("ERROR subscribing to topic '$topic':");
+        foreach my $e (@_) {
+          next if ref($e);
+          diag("    $e");
+        }
+      },
+      on_message => sub {
+        my (undef, $payload, $topic) = @_;
+        
+        if ($payload =~ m/--- start: count (\d+) rate ([\d.]+) size (\d+)/) {
+          my ($count, $rate, $size) = ($1, $2, $3);
+          $load_stats{$topic} = {
+            count   => $count,
+            rate    => $rate,
+            size    => $size,
+            start_t => [gettimeofday()],
+            last_m  => 0,
+            recv_n  => 0,
+            mesg_t  => [],
+          };
+          diag("-- Starting load collector run for topic '$topic'");
+          diag("-- Parameters: count $count, rate $rate, size $size");
+          return;
+        }
+        
+        if ($payload =~ m/--- end: actual rate ([\d.]+)/) {
+          my $rate = $1;
+          my $t = delete $load_stats{$topic};
+          return unless $t;
+          
+          $t->{end_t}   = [gettimeofday()];
+          $t->{lg_rate} = $rate;
+          $t->{delta}   = tv_interval($t->{start_t}, $t->{end_t});
+          $t->{lc_rate} = $t->{recv_n} / ($t->{delta} || 1);
+          my ($miss_n, $mesg_t) = (0, $t->{mesg_t});
+          for (my $i = 1; $i <= $t->{count}; $i++) {
+            $miss_n++ unless defined $mesg_t->[$i];
+          }
+          $t->{miss_n} = $miss_n;
+
+          diag("-- Load collector run for topic '$topic' done!");
+          diag("** Parameters: count $t->{count}, rate $t->{rate}, size $t->{size}");
+          diag("** Elapsed seconds: $t->{delta}");
+          diag("** Received messages: $t->{recv_n}");
+          diag("** Missed messages: $t->{miss_n}");
+          diag("** Out-of-order messages: $t->{ooo_n}");
+          diag("** Load Collector actual rate: $t->{lc_rate}");
+          diag("** Load Generator actual rate: $t->{lg_rate}");
+          return;
+        }
+        
+        if (my ($cur) = $payload =~ m/^N=(\d+);/) {
+          my $t = $load_stats{$topic};
+          return unless $t;
+          
+          $t->{recv_n}++;
+          $t->{mesg_t}[$cur] = [gettimeofday()];
+          my $diff = $cur - $t->{last_m} - 1;
+          if ($diff >= 0) {
+            $t->{ooo_n} += $diff;
+            $t->{last_m} = $cur;
+          }
+        }
+      }
+    });
+  }
+  
+  diag("Waiting for load generator to start");
+  
+  # Temp hack, deliver_messages() should wait forever
+  while (1) { $sb->deliver_messages(5) };
+}
+
 
 ### Agent connection
 
