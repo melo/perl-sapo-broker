@@ -24,6 +24,8 @@ sub new {
 ### Common API
 
 sub state { return $_[0]{psb}->state }
+sub host  { return $_[0]{psb}->host  }
+sub port  { return $_[0]{psb}->port  }
 
 sub connect {
   my $self = shift;
