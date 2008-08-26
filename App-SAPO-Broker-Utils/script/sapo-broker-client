@@ -280,6 +280,8 @@ sub load_collector {
             start_t => [gettimeofday()],
             last_m  => 0,
             recv_n  => 0,
+            ooo_n   => 0,
+            miss_n  => 0,
             mesg_t  => [],
           };
           diag("-- Starting load collector run for topic '$topic'");
@@ -321,8 +323,10 @@ sub load_collector {
           $t->{mesg_t}[$cur] = [gettimeofday()];
           my $diff = $cur - $t->{last_m} - 1;
           if ($diff >= 0) {
-            $t->{ooo_n} += $diff;
             $t->{last_m} = $cur;
+          }
+          else {
+            $t->{ooo_n}++;
           }
         }
       }
