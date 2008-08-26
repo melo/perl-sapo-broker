@@ -38,7 +38,6 @@ my (
   $quiet, $help,
   $host, $port,
 );
-$subscribe = -1;
 $quiet = 1 unless -t \*STDIN;
 $size  = 70;
 $count = 1000;
@@ -76,11 +75,10 @@ usage("Load generation and Queue operations do not mix")
 usage("The remove operation requires a queue identifier")
   if $remove && !$queue;
 
-$subscribe = 0 if $subscribe == -1 && ($publish || $remove || $rate);
 usage("Only one off 'subscribe' or 'publish' can be used")
   if $subscribe && $publish;
 
-usage("Load generation and Queue operations do not mix")
+usage("Load generation and Basic PubSub operations do not mix")
   if $rate && ($publish || $subscribe);
 
 my @topics = @ARGV;
@@ -88,10 +86,7 @@ my @topics = @ARGV;
 usage("Need set of topics to publish/subscribe to") unless $remove || @topics;
 
 # Run the proper role
-if ($subscribe) {
-  subscriber();
-}
-elsif ($publish) {
+if ($publish) {
   publisher();
 }
 elsif ($queue && $remove) {
@@ -99,6 +94,9 @@ elsif ($queue && $remove) {
 }
 elsif ($rate) {
   load_generator();
+}
+else {
+  subscriber();
 }
 
 
