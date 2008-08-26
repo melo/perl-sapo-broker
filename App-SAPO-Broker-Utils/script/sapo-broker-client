@@ -30,10 +30,11 @@ foreach my $module (@deps) {
 
 # Parse command line
 
-my ($subscribe, $publish);
+my ($subscribe, $publish, $quiet);
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
+  "quiet"     => \$quiet,
 );
 
 usage() unless $ok;
@@ -91,6 +92,13 @@ $payload
 }
 
 sub publisher {}
+
+
+### Diagnostics
+
+sub diag {
+  print @_,"\n" unless $quiet;
+}
 
 
 ### Rate calculations
