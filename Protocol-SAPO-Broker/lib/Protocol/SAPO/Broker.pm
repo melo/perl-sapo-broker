@@ -476,8 +476,10 @@ sub _parse_xml {
   my ($xml) = @_;
   
   $xml_parser = XML::LibXML->new unless $xml_parser;
-
-  return XML::LibXML::XPathContext->new($xml_parser->parse_string($xml));
+  
+  my $doc = $xml_parser->parse_string($xml);
+  $doc->indexElements;
+  return XML::LibXML::XPathContext->new($doc);
 }
 
 sub _safe_ns_register {
