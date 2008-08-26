@@ -213,6 +213,7 @@ sub queue_remove {
 
 sub load_generator {
   my $sb = get_agent_connection();
+  
   my $delay = 0;
   $delay = 1 / $rate if $rate > 0;
 
@@ -336,7 +337,7 @@ sub load_collector {
   diag("Waiting for load generator to start");
   
   # Temp hack, deliver_messages() should wait forever
-  while (1) { $sb->deliver_messages(5) };
+  while ($sb->state eq 'connected') { $sb->deliver_messages(1) };
 }
 
 
