@@ -14,6 +14,7 @@ install_script "sapo-broker-client";
 # Specific dependencies
 requires 'Net::SAPO::Broker' => '0.01';
 requires 'Getopt::Long'      => 0;
+requires 'Time::HiRes'       => 0;
 
 # Meta
 repository 'http://github.com/melo/perl-sapo-broker';

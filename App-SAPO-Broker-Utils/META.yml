@@ -16,6 +16,7 @@ no_index:
 requires:
   Getopt::Long: 0
   Net::SAPO::Broker: 0.01
+  Time::HiRes: 0
   perl: 5.6.0
 resources:
   license: http://dev.perl.org/licenses/

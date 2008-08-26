@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use 5.006;
+use Time::HiRes qw( gettimeofday tv_interval );
 
 # Make sure we have the proper dependencies installed
 my @deps = qw(
@@ -59,14 +60,23 @@ else {
 sub subscriber {
   my $sb = shift;
   
-  foreach my $topic (@_) {
+  foreach my $topic (@_) {    
     $sb->subscribe({
       topic      => $topic,
       on_message => sub {
         my (undef, $payload, $topic) = @_;
-        
+        my ($now, $count, $rate, $delta) = _calc_rate($topic);
+
+        my $rt = sprintf('%0.3f mesg/sec (%d messages)', $rate, $count);
+        my $ts = localtime($now->[0]);
+        substr($ts, -5, 0, '.'.substr($now->[1], 0, 4));
+        $ts .= sprintf(' (%0.3f elapsed since last message)', $delta) if $delta;
+
         print <<"        REPORT";
 **** Got message on topic '$topic':
+**** at $ts
+**** rate for topic is $rt
+
 --- START ---
 $payload
 ---- END ---
@@ -81,6 +91,36 @@ $payload
 }
 
 sub publisher {}
+
+
+### Rate calculations
+
+our %topic_rate;
+
+sub _calc_rate {
+  my ($topic) = @_;
+  my $now = [gettimeofday()];
+  my ($delta, $rate, $count);
+  
+  my $stats = $topic_rate{$topic};
+  
+  if ($stats) {
+    $count      = ++$stats->[1];
+    $delta      = tv_interval($stats->[2], $now);
+    $stats->[2] = $now;
+    
+    my $since_start = tv_interval($stats->[0], $now);
+    $rate = $count / ($since_start||1);
+  }
+  else {
+    $topic_rate{$topic} = [$now, 1, $now];
+    $delta = 0;
+    $rate  = 0;
+    $count = 1
+  }
+
+  return ($now, $count, $rate, $delta);  
+}
 
 
 ### Usage
