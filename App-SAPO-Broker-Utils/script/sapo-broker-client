@@ -32,6 +32,7 @@ foreach my $module (@deps) {
 
 my ($subscribe, $publish, $quiet, $host, $help);
 $subscribe = -1;
+$quiet = 1 unless -t \*STDIN;
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
