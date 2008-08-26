@@ -142,7 +142,7 @@ sub subscriber {
   }
   
   # Temp hack, deliver_messages() should wait forever
-  while (1) { $sb->deliver_messages(5) };
+  while ($sb->state eq 'connected') { $sb->deliver_messages(5) };
 }
 
 sub publisher {
