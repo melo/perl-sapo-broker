@@ -66,8 +66,8 @@ my $ok = GetOptions(
 usage() unless $ok;
 usage() if $help;
 
-usage("Invalid --rate, must be greater than 0")
-  if defined($rate) && $rate <= 0;
+usage("Invalid --rate, must be 0 or greater")
+  if defined($rate) && $rate < 0;
 
 usage("Minimal payload size is 10")
   if $size < 10;
@@ -78,7 +78,7 @@ usage("The remove operation requires a queue identifier")
 # check for incompatible modes
 my $mode;
 
-if ($rate) {
+if (defined($rate)) {
   $mode = "load generation";
 }
 
@@ -113,7 +113,7 @@ if ($publish) {
 elsif ($queue && $remove) {
   queue_remove();
 }
-elsif ($rate) {
+elsif (defined($rate)) {
   usage("Need set of topics for load generation") unless @topics;
   load_generator();
 }
@@ -213,7 +213,8 @@ sub queue_remove {
 
 sub load_generator {
   my $sb = get_agent_connection();
-  my $delay = 1 / $rate;
+  my $delay = 0;
+  $delay = 1 / $rate if $rate > 0;
 
   if ($count > 0) {
     diag("** Generating $count messages (payload size is $size)");
@@ -235,7 +236,7 @@ sub load_generator {
     $payload .= ' ' x ($size - length($payload));
     
     broadcast($sb, $payload);
-    sleep($delay);
+    sleep($delay) if $delay;
     
     next unless $count;
     $count--;
@@ -443,19 +444,25 @@ sub usage {
       
         * --subscribe is the default;
         * You cannot use --subscribe and --publish simultaneously.
+        
       
      Queue manipulations:
         --queue       specify the queue to work with
         --remove      removes the specified queue
+        
     
      Load Generation:
         --count=N     how many messages to generate [defaults to 1000]
         --size=N      size of each payload [default to 70 bytes]
         --rate=N      desired messages per second (approximation)
         
-        * rate can be decimal value, must be above 0;
+        * rate can be decimal value, must be 0 or above;
+        * rate of 0 means maximum speed (useful to test slow clients);
         * rate is an approximation, does not take in account over-head;
         * minimal size is 10.
+        
+        Rates above 4000 are very unreliable due to usleep granularity.
+        
     
      Load Collector:
         --collector   starts a load collector for each topic
@@ -463,6 +470,7 @@ sub usage {
         It will wait for a start of a run using the load generation mode
         on the same topic. After the end of the run, prints actual rate,
         missed messages and out-of-order messages.
+        
         
      General options:
         --host        connect to a specific host [defaults to 127.0.0.1]
