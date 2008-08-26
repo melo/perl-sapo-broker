@@ -30,13 +30,14 @@ foreach my $module (@deps) {
 
 # Parse command line
 
-my ($subscribe, $publish, $quiet, $host, $help);
+my ($subscribe, $publish, $quiet, $host, $port, $help);
 $subscribe = -1;
 $quiet = 1 unless -t \*STDIN;
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
   "host=s"    => \$host,
+  "port=s"    => \$port,
   "quiet"     => \$quiet,
   "help"      => \$help,
 );
@@ -141,6 +142,7 @@ sub publisher {
 sub get_agent_connection {
   return Net::SAPO::Broker->new({
     host => $host,
+    port => $port,
 
     on_state_connecting => sub {
       my ($sb) = @_;
