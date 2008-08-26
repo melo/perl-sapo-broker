@@ -247,8 +247,11 @@ sub load_generator {
   }
   
   my $actual_rate = $mesg_number / (tv_interval($start) || 1);
-  broadcast($sb, "--- end: actual rate $actual_rate");
-  diag('** Done!');
+  diag('** Done. Sending termination message');
+  foreach (1..10) {
+    broadcast($sb, "--- end: actual rate $actual_rate");
+    sleep(1);
+  }
   diag("** Sent $mesg_number messages, requested rate $rate mesg/sec");
   diag("** Actual rate was $actual_rate mesg/sec");
 }
