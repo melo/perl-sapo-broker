@@ -31,7 +31,7 @@ foreach my $module (@deps) {
 # Parse command line
 
 my ($subscribe, $publish, $quiet, $host, $help);
-$subscribe = 1;
+$subscribe = -1;
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
@@ -42,10 +42,13 @@ my $ok = GetOptions(
 
 usage() unless $ok;
 usage() if $help;
+
+$subscribe = 0 if $subscribe == -1 && $publish;
 usage("Only one off 'subscribe' or 'publish' can be used")
   if $subscribe && $publish;
 
 my @topics = @ARGV;
+@ARGV = ();
 usage("Need set of topics to publish/subscribe to") unless @topics;
 
 # Run the proper role
@@ -102,7 +105,34 @@ $payload
   while (1) { $sb->deliver_messages(5) };
 }
 
-sub publisher {}
+sub publisher {
+  my $sb = get_agent_connection();
+  
+  diag('Enter a message per line. Each non-empty line will be sent');
+  diag('to the following topics:');
+  foreach my $topic (@topics) {
+    diag("    * $topic");
+  }
+  diag("");
+  diag('Type ^D to exit');
+  diag();
+  
+  while (my $msg = <>) {
+    chomp($msg);
+    next if $msg =~ m/^\s*$/;
+    
+    foreach my $topic (@topics) {
+      $sb->publish({
+        topic   => $topic,
+        payload => $msg,
+        
+        on_error => sub {
+          diag("Could not send message to topic '$topic'");
+        },
+      });
+    }
+  }
+}
 
 
 ### Agent connection
