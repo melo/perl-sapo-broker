@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use 5.006;
-use Time::HiRes qw( gettimeofday tv_interval );
+use Time::HiRes qw( gettimeofday tv_interval sleep );
 
 # Make sure we have the proper dependencies installed
 my @deps = qw(
@@ -34,17 +34,25 @@ foreach my $module (@deps) {
 my (
   $subscribe, $publish,
   $queue, $remove,
+  $count, $rate, $size,
   $quiet, $help,
   $host, $port,
 );
 $subscribe = -1;
 $quiet = 1 unless -t \*STDIN;
+$size  = 70;
+$count = 1000;
+
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
   
   "queue=s"   => \$queue,
   "remove"    => \$remove,
+  
+  "count=s"   => \$count,
+  "rate=s"    => \$rate,
+  "size=s"    => \$size,
   
   "host=s"    => \$host,
   "port=s"    => \$port,
@@ -56,12 +64,24 @@ my $ok = GetOptions(
 usage() unless $ok;
 usage() if $help;
 
+usage("Invalid --rate, must be greater than 0")
+  if defined($rate) && $rate <= 0;
+
+usage("Minimal payload size is 10")
+  if $size < 10;
+
+usage("Load generation and Queue operations do not mix")
+  if $rate && $remove;
+
 usage("The remove operation requires a queue identifier")
   if $remove && !$queue;
 
-$subscribe = 0 if $subscribe == -1 && ($publish || $remove);
+$subscribe = 0 if $subscribe == -1 && ($publish || $remove || $rate);
 usage("Only one off 'subscribe' or 'publish' can be used")
   if $subscribe && $publish;
+
+usage("Load generation and Queue operations do not mix")
+  if $rate && ($publish || $subscribe);
 
 my @topics = @ARGV;
 @ARGV = ();
@@ -76,6 +96,9 @@ elsif ($publish) {
 }
 elsif ($queue && $remove) {
   queue_remove();
+}
+elsif ($rate) {
+  load_generator();
 }
 
 
@@ -172,6 +195,41 @@ sub queue_remove {
   return;
 }
 
+sub load_generator {
+  my $sb = get_agent_connection();
+  my $delay = 1 / $rate;
+
+  if ($count > 0) {
+    diag("** Generating $count messages (payload size is $size)");
+  }
+  else {
+    $count = 0;
+    diag("** Generating unlimited messages (payload size is $size)");
+  }
+  diag("** at a rate of $rate mesg/sec");
+  diag("** You can abort with ^C at any time");
+
+  diag("** Running....");
+  my $start = [gettimeofday()];  
+  my $mesg_number = 0;
+  while (1) {
+    $mesg_number++;
+    my $payload = "N=$mesg_number;";
+    $payload .= ' ' x ($size - length($payload));
+    
+    broadcast($sb, $payload);
+    sleep($delay);
+    
+    next unless $count;
+    $count--;
+    last unless $count;
+  }
+  
+  my $actual_rate = $mesg_number / (tv_interval($start) || 1);
+  diag('** Done!');
+  diag("** Sent $mesg_number messages, requested rate $rate mesg/sec");
+  diag("** Actual rate was $actual_rate mesg/sec");
+}
 
 ### Agent connection
 
@@ -206,6 +264,26 @@ sub get_agent_connection {
       diag("## Write error: $e");
     },
   });
+}
+
+### Multi-topic publish
+
+sub broadcast {
+  my ($sb, $payload) = @_;
+  
+  foreach my $topic (@topics) {
+    $sb->publish({
+      topic   => $topic,
+      payload => $payload,
+
+      # on_error => sub {
+      #   diag("!! Could not send message to topic '$topic'");
+      #   diag("!! Payload is: $payload");
+      # },
+    });
+  }
+  
+  return;
 }
 
 
@@ -265,7 +343,16 @@ sub usage {
      Queue manipulations:
         --queue       specify the queue to work with
         --remove      removes the specified queue
-      
+    
+     Load Generation:
+        --count=N     how many messages to generate [defaults to 1000]
+        --size=N      size of each payload [default to 70 bytes]
+        --rate=N      desired messages per second (approximation)
+        
+        * rate can be decimal value, must be above 0;
+        * rate is an approximation, does not take in account over-head;
+        * minimal size is 10.
+        
      General options:
         --host        connect to a specific host [defaults to 127.0.0.1]
         --port        connect to a specific TCP port [default to 3322]
