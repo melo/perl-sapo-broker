@@ -61,9 +61,19 @@ else {
 sub subscriber {
   my $sb = shift;
   
-  foreach my $topic (@_) {    
+  foreach my $topic (@_) {
     $sb->subscribe({
       topic      => $topic,
+      on_success => sub {
+        diag("%% Subscribed topic '$topic'.");
+      },
+      on_error => sub {
+        diag("ERROR subscribing to topic '$topic':");
+        foreach my $e (@_) {
+          next if ref($e);
+          diag("    $e");
+        }
+      },
       on_message => sub {
         my (undef, $payload, $topic) = @_;
         my ($now, $count, $rate, $delta) = _calc_rate($topic);
