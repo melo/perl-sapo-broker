@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 146;
+use Test::More tests => 138;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -114,7 +114,7 @@ ok($msg =~ m!<b:TextPayload></b:TextPayload>!,              '... proper payload'
 # Now lets fire up a subscriber connection
 
 my ($msg_s, $i_msg_s);
-my ($missed_pay, $missed_dest, $mesg, $xdoc, $bp);
+my ($missed_pay, $missed_dest, $mesg, $xdoc);
 my $sb_consumer = Protocol::SAPO::Broker->new({
   host => '127.0.0.2',
   port => '2233',
@@ -123,7 +123,7 @@ my $sb_consumer = Protocol::SAPO::Broker->new({
   on_send    => sub { (undef, undef, $msg_s) = @_; return },
   on_receive => sub { (undef, $i_msg_s) = @_; return },
   on_unmatched_message => sub {
-    (undef, $missed_pay, $missed_dest, $mesg, $xdoc, $bp) = @_;
+    (undef, $missed_pay, $missed_dest, $mesg, $xdoc) = @_;
     return;
   },
 });
@@ -226,17 +226,15 @@ is($missed_pay, $inv_payload, '... and properly missed, no hook for her');
 is($missed_dest, $inv_topic,  '... in the proper unmatched topic');
 is(ref($mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
 is(ref($xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
-ok($bp,         'SAPO Broker namespace prefix is defined');
-ok(length($bp), '... and has something in it');
 
 
 # Subscribe with callback, receive notif, check if matched
 my $valid_topic = '/real_test';
-my ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp);
+my ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc);
 $r = $sb_consumer->subscribe({
   topic => $valid_topic,
   on_message => sub {
-    ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp) = @_;
+    ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc) = @_;
     return;
   },
 });
@@ -255,7 +253,6 @@ isnt($cb1_pay, $inv_payload, '... and our active subscription didnt catch it');
 isnt($cb1_dest, $inv_topic,  '... not even a small register of it');
 ok(!defined($cb1_mesg),      '... so message is undef');
 ok(!defined($cb1_xdoc),      '... and XPath is undef');
-ok(!defined($cb1_bp),        '... and namespace prefix is undef');
 
 
 # Message for a matching topic
@@ -271,25 +268,23 @@ is($cb1_pay, $inv_payload,  '... and our active subscription did catch it');
 is($cb1_dest, $valid_topic, '... even got the destination right');
 is(ref($cb1_mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
 is(ref($cb1_xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
-ok($cb1_bp,         'SAPO Broker namespace prefix is defined');
-ok(length($cb1_bp), '... and has something in it');
 is($sb_consumer, $cb1_sb, 'Proper Protocol object in callback also');
 
 
 # Activate second subscription over same topic
-my ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc, $cb2_bp);
+my ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc);
 $r = $sb_consumer->subscribe({
   topic => $valid_topic,
   as_queue => 'q1',
   on_message => sub {
-    ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc, $cb2_bp) = @_;
+    ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc) = @_;
     return;
   },
 });
 
 
 # Message for a matching topic (two matches)
-($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc, $cb1_bp) =
+($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc) =
 (undef,   undef,    undef,     undef,     undef,     undef  );
 
 my $tq_dest = "q1\@$valid_topic";
@@ -313,13 +308,10 @@ is($cb2_dest, $valid_topic, '... even got the destination right');
 is($cb2_pay, $inv_payload,  '... and our second active subscription did catch it');
 is(ref($cb2_mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
 is(ref($cb2_xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
-ok($cb2_bp,         'SAPO Broker namespace prefix is defined');
-ok(length($cb2_bp), '... and has something in it');
 is($sb_consumer, $cb2_sb, 'Proper Protocol object in callback also');
 
 is($cb1_pay,  $cb2_pay,    'Callback for subs 1 and subs 2 have same payload');
 is($cb1_dest, $cb2_dest,   '... even got the same destination');
-is($cb1_bp,   $cb2_bp,     '... and same Broker namespace prefix');
 is($cb1_sb,   $cb2_sb,     '... and the same Protocol object');
 isnt($cb1_mesg, $cb2_mesg, '... but not the same message element');
 isnt($cb1_xdoc, $cb2_xdoc, '... nor the same XPath context');

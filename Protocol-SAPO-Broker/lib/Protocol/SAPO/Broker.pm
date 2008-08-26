@@ -219,16 +219,16 @@ sub _receive_message {
   }
 
   # Register most important namespaces
-  my $sp  = _safe_ns_register($xdoc, soap => 'http://www.w3.org/2003/05/soap-envelope' );
-  my $bp  = _safe_ns_register($xdoc, mq   => 'http://services.sapo.pt/broker'          );
-  my $wsa = _safe_ns_register($xdoc, wsa  => 'http://www.w3.org/2005/08/addressing'    );
+  $xdoc->registerNs( mysoap => 'http://www.w3.org/2003/05/soap-envelope' );
+  $xdoc->registerNs( mymq   => 'http://services.sapo.pt/broker'          );
+  $xdoc->registerNs( mywsa  => 'http://www.w3.org/2005/08/addressing'    );
 
   # Check to see if it is a valid Broker message
-  my ($msg) = $xdoc->findnodes("//$sp:Body/$bp:*");
-  return $self->_process_message($msg, $payload, $xdoc, $bp, $wsa) if $msg;
+  my ($msg) = $xdoc->findnodes('//mysoap:Body/mymq:*');
+  return $self->_process_message($msg, $payload, $xdoc) if $msg;
   
   # Ok, not a BrokerMessage, maybe a Fault?
-  my ($fault) = $xdoc->findnodes("//$sp:Fault");
+  my ($fault) = $xdoc->findnodes('//mysoap:Fault');
   return $self->_process_fault($fault, $xdoc) if $fault;
   
   # WTF is this?
@@ -236,45 +236,45 @@ sub _receive_message {
 }
 
 sub _process_message {
-  my ($self, $mesg, $payload, $xdoc, $bp, $wsa) = @_;
+  my ($self, $mesg, $payload, $xdoc) = @_;
   
   my $node_name = $mesg->localname;
-  return $self->_process_notification($mesg, $xdoc, $bp, $wsa)
+  return $self->_process_notification($mesg, $xdoc)
     if $node_name eq 'Notification';
-  return $self->_process_accepted($mesg, $xdoc, $bp)
+  return $self->_process_accepted($mesg, $xdoc)
     if $node_name eq 'Accepted';
   
   return $self->_optional_callback('unknown_message', $mesg, $payload);
 }
 
 sub _process_notification {
-  my ($self, $mesg, $xdoc, $bp, $wsa) = @_;
+  my ($self, $mesg, $xdoc) = @_;
   
-  my $destination = $xdoc->findvalue("//$bp:DestinationName", $mesg);
-  my $payload     = $xdoc->findvalue("//$bp:TextPayload", $mesg);
-  my $to          = $xdoc->findvalue("//$wsa:To") || $destination;
+  my $destination = $xdoc->findvalue('//mymq:DestinationName', $mesg);
+  my $payload     = $xdoc->findvalue('//mymq:TextPayload', $mesg);
+  my $to          = $xdoc->findvalue('//mywsa:To') || $destination;
   
   $destination =~ s/^[^@]+[@]//;
 
-  return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc, $bp)
+  return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc)
     unless exists $self->{subs}{$to};
     
   my $subs = $self->{subs}{$to};
   foreach my $cb (@$subs) {
-    $cb->($self, $payload, $destination, $mesg, $xdoc, $bp);
+    $cb->($self, $payload, $destination, $mesg, $xdoc);
   }
   
   return;
 }
 
 sub _process_accepted {
-  my ($self, $mesg, $xdoc, $bp) = @_;
+  my ($self, $mesg, $xdoc) = @_;
 
-  my ($ack) = $xdoc->findnodes("//$bp:Accepted", $mesg);
+  my ($ack) = $xdoc->findnodes('//mymq:Accepted', $mesg);
   my $id = $ack->getAttributeNS('http://services.sapo.pt/broker', 'action-id');
   
   my $cbs = delete $self->{id_callbacks}{$id};
-  $cbs->[0]->($self, $id, $mesg, $xdoc, $bp) if $cbs && $cbs->[0];
+  $cbs->[0]->($self, $id, $mesg, $xdoc) if $cbs && $cbs->[0];
   
   return;
 }
@@ -291,7 +291,7 @@ sub _process_fault {
   );
   
   while (my ($field, $xp) = each %fields) {
-    my $xpath = join('/', map { "soap:$_" } @$xp);
+    my $xpath = join('/', map { "mysoap:$_" } @$xp);
     $fault{$field} = $xdoc->findvalue($xpath, $fault);
   }
   
@@ -480,17 +480,6 @@ sub _parse_xml {
   my $doc = $xml_parser->parse_string($xml);
   $doc->indexElements;
   return XML::LibXML::XPathContext->new($doc);
-}
-
-sub _safe_ns_register {
-  my ($xpc, $prefix, $ns) = @_;
-  
-  while ($xpc->lookupNs($prefix)) {
-    $prefix++;
-  }
-  $xpc->registerNs($prefix => $ns);
-  
-  return $prefix;
 }
 
 
