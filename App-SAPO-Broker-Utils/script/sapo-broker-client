@@ -30,10 +30,11 @@ foreach my $module (@deps) {
 
 # Parse command line
 
-my ($subscribe, $publish, $quiet);
+my ($subscribe, $publish, $quiet, $host);
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
+  "host=s"    => \$host,
   "quiet"     => \$quiet,
 );
 
@@ -45,7 +46,35 @@ usage("Only one off 'subscribe' or 'publish' can be used")
 usage("Need set of topics to publish/subscribe to") unless @ARGV;
 
 # Start a SAPO Broker connection
-my $sb = Net::SAPO::Broker->new;
+my $sb = Net::SAPO::Broker->new({
+  host => $host,
+  
+  on_state_connecting => sub {
+    my ($sb) = @_;
+    my $agent = $sb->host;
+    diag("## Connecting to agent at '$agent'");
+  },
+  on_connected => sub {
+    diag("## Connected!");
+  },
+  on_eof => sub {
+    diag("## Lost connection to agent");
+  },
+  on_state_disconnecting => sub {
+    diag("## Disconnecting");
+  },
+  on_reconnect => sub {
+    diag("## Reconnecting");
+  },
+  on_read_error => sub {
+    my (undef, $e) = @_;
+    diag("## Read error: $e");
+  },
+  on_write_error => sub {
+    my (undef, $e) = @_;
+    diag("## Write error: $e");
+  },
+});
 
 # Run the proper role
 if ($subscribe) {
