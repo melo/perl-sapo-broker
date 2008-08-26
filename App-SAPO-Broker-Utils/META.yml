@@ -15,6 +15,7 @@ no_index:
     - t
 requires:
   Getopt::Long: 0
+  LWP::UserAgent: 0
   Net::SAPO::Broker: 0.01
   Time::HiRes: 0
   perl: 5.6.0
