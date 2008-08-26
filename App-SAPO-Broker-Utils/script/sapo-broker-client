@@ -163,16 +163,7 @@ sub publisher {
     chomp($msg);
     next if $msg =~ m/^\s*$/;
     
-    foreach my $topic (@topics) {
-      $sb->publish({
-        topic   => $topic,
-        payload => $msg,
-        
-        on_error => sub {
-          diag("Could not send message to topic '$topic'");
-        },
-      });
-    }
+    broadcast($sb, $msg);
   }
 }
 
