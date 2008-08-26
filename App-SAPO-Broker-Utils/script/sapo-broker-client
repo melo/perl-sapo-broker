@@ -255,19 +255,25 @@ sub usage {
   _write_err_mesg(<<"  USAGE");
     Usage: sapo-broker-client [options] [topic...]
     
-      --subscribe   prints new messages from any of the topics
-      --publish     sends each non-empty lines from stdin to all the topics
+     Basic Publish/Subscribe:
+        --subscribe   prints new messages from any of the topics
+        --publish     sends each non-empty lines from stdin to all the topics
       
-      Subscribe is the default. You cannot use --subscribe and --publish 
-      simultaneously.
+        * --subscribe is the default;
+        * You cannot use --subscribe and --publish simultaneously.
       
-      --queue       specify the qeueu to work with
-      --remove      removes the specified queue
+     Queue manipulations:
+        --queue       specify the queue to work with
+        --remove      removes the specified queue
       
-      --host        connect to a specific host [defaults to 127.0.0.1]
-      --port        connect to a specific TCP port [default to 3322]
-      --quiet       disables diagnostic messages
-      --help        shows this file
+     General options:
+        --host        connect to a specific host [defaults to 127.0.0.1]
+        --port        connect to a specific TCP port [default to 3322]
+        --quiet       disables diagnostic messages
+        --help        shows this file
+        
+        * If either STDIN or STDOUT is not a tty, --quiet is turned on.
+        
   USAGE
   exit(1);
 }
