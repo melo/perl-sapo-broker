@@ -260,6 +260,6 @@ SKIP: {
   $recv_mesg = $recv_topic = undef;
   $sbc->deliver_messages(1);
   ok($recv_mesg, 'Subscriber as queue got 1 message');
-  is($recv_mesg, "$$ $$",           '... with proper payload');
-  is($recv_topic, 'taq1@/test/taq', '... and with proper topic');
+  is($recv_mesg, "$$ $$",      '... with proper payload');
+  is($recv_topic, '/test/taq', '... and with proper topic');
 }
