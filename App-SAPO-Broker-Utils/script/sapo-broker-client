@@ -30,16 +30,18 @@ foreach my $module (@deps) {
 
 # Parse command line
 
-my ($subscribe, $publish, $quiet, $host);
+my ($subscribe, $publish, $quiet, $host, $help);
 $subscribe = 1;
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
   "host=s"    => \$host,
   "quiet"     => \$quiet,
+  "help"      => \$help,
 );
 
 usage() unless $ok;
+usage() if $help;
 usage("Only one off 'subscribe' or 'publish' can be used")
   if $subscribe && $publish;
 usage("Need set of topics to publish/subscribe to") unless @ARGV;
