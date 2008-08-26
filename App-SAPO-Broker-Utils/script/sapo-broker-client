@@ -344,7 +344,7 @@ sub load_collector {
 ### Agent connection
 
 sub get_agent_connection {
-  return Net::SAPO::Broker->new({
+  my $sb = Net::SAPO::Broker->new({
     host => $host,
     port => $port,
 
@@ -374,6 +374,14 @@ sub get_agent_connection {
       diag("## Write error: $e");
     },
   });
+  
+  if ($sb->state ne 'connected') {
+    my ($h, $p) = ($sb->host, $sb->port);
+    diag("FATAL: could not connect to agent at '$h' port $p");
+    exit(1);
+  }
+  
+  return $sb;
 }
 
 ### Multi-topic publish
