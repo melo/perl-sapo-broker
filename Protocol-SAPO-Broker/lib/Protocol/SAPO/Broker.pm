@@ -219,12 +219,13 @@ sub _receive_message {
   }
 
   # Register most important namespaces
-  my $sp = _safe_ns_register($xdoc, soap => 'http://www.w3.org/2003/05/soap-envelope' );
-  my $bp = _safe_ns_register($xdoc, mq   => 'http://services.sapo.pt/broker'          );
+  my $sp  = _safe_ns_register($xdoc, soap => 'http://www.w3.org/2003/05/soap-envelope' );
+  my $bp  = _safe_ns_register($xdoc, mq   => 'http://services.sapo.pt/broker'          );
+  my $wsa = _safe_ns_register($xdoc, wsa  => 'http://www.w3.org/2005/08/addressing'    );
 
   # Check to see if it is a valid Broker message
   my ($msg) = $xdoc->findnodes("//$sp:Body/$bp:*");
-  return $self->_process_message($msg, $payload, $xdoc, $bp) if $msg;
+  return $self->_process_message($msg, $payload, $xdoc, $bp, $wsa) if $msg;
   
   # Ok, not a BrokerMessage, maybe a Fault?
   my ($fault) = $xdoc->findnodes("//$sp:Fault");
@@ -235,25 +236,30 @@ sub _receive_message {
 }
 
 sub _process_message {
-  my ($self, $mesg, $payload, $xdoc, $bp) = @_;
+  my ($self, $mesg, $payload, $xdoc, $bp, $wsa) = @_;
   
   my $node_name = $mesg->localname;
-  return $self->_process_notification($mesg, $xdoc, $bp) if $node_name eq 'Notification';
-  return $self->_process_accepted($mesg, $xdoc, $bp)     if $node_name eq 'Accepted';
+  return $self->_process_notification($mesg, $xdoc, $bp, $wsa)
+    if $node_name eq 'Notification';
+  return $self->_process_accepted($mesg, $xdoc, $bp)
+    if $node_name eq 'Accepted';
   
   return $self->_optional_callback('unknown_message', $mesg, $payload);
 }
 
 sub _process_notification {
-  my ($self, $mesg, $xdoc, $bp) = @_;
+  my ($self, $mesg, $xdoc, $bp, $wsa) = @_;
   
   my $destination = $xdoc->findvalue("//$bp:DestinationName", $mesg);
   my $payload     = $xdoc->findvalue("//$bp:TextPayload", $mesg);
+  my $to          = $xdoc->findvalue("//$wsa:To") || $destination;
+  
+  $destination =~ s/^[^@]+[@]//;
 
   return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc, $bp)
-    unless exists $self->{subs}{$destination};
+    unless exists $self->{subs}{$to};
     
-  my $subs = $self->{subs}{$destination};
+  my $subs = $self->{subs}{$to};
   foreach my $cb (@$subs) {
     $cb->($self, $payload, $destination, $mesg, $xdoc, $bp);
   }

@@ -296,7 +296,7 @@ my $tq_dest = "q1\@$valid_topic";
 $r = $sb_consumer->incoming_data(
   _build_frame(
     _mk_notification(
-      $tq_dest, $inv_payload,
+      $valid_topic, $inv_payload, $tq_dest
     )
   )
 );
@@ -309,8 +309,8 @@ $r = $sb_consumer->incoming_data(
   )
 );
 ok(! defined($r), 'Sent Notif with active subscription, matching topic');
+is($cb2_dest, $valid_topic, '... even got the destination right');
 is($cb2_pay, $inv_payload,  '... and our second active subscription did catch it');
-is($cb2_dest, $tq_dest,     '... even got the destination right');
 is(ref($cb2_mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
 is(ref($cb2_xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
 ok($cb2_bp,         'SAPO Broker namespace prefix is defined');
@@ -318,10 +318,10 @@ ok(length($cb2_bp), '... and has something in it');
 is($sb_consumer, $cb2_sb, 'Proper Protocol object in callback also');
 
 is($cb1_pay,  $cb2_pay,    'Callback for subs 1 and subs 2 have same payload');
+is($cb1_dest, $cb2_dest,   '... even got the same destination');
 is($cb1_bp,   $cb2_bp,     '... and same Broker namespace prefix');
-is($cb1_sb,   $cb2_sb,     '... and even the same Protocol object');
-isnt($cb1_dest, $cb2_dest, '... but not the same destination');
-isnt($cb1_mesg, $cb2_mesg, '... nor the same message element');
+is($cb1_sb,   $cb2_sb,     '... and the same Protocol object');
+isnt($cb1_mesg, $cb2_mesg, '... but not the same message element');
 isnt($cb1_xdoc, $cb2_xdoc, '... nor the same XPath context');
 
 
@@ -605,7 +605,8 @@ TODO: {
 # Utils
 
 sub _mk_notification {
-  my ($topic, $payload) = @_;
+  my ($topic, $payload, $wsa_to) = @_;
+  $wsa_to ||= $topic;
   
   my $msg = <<EOF;
     <soap:Envelope
@@ -613,6 +614,7 @@ sub _mk_notification {
     	xmlns:wsa="http://www.w3.org/2005/08/addressing"
     	xmlns:mq="http://services.sapo.pt/broker">
     	<soap:Header>
+    	  <wsa:To>$wsa_to</wsa:To>
     		<wsa:From>
     			<wsa:Address>broker://agent/agent-name/##MYTOPIC##</wsa:Address>
     		</wsa:From>
