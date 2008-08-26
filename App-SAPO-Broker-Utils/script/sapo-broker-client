@@ -9,6 +9,7 @@ use Time::HiRes qw( gettimeofday tv_interval );
 my @deps = qw(
   Net::SAPO::Broker
   Getopt::Long
+  LWP::UserAgent
 );
 
 foreach my $module (@deps) {
@@ -30,12 +31,14 @@ foreach my $module (@deps) {
 
 # Parse command line
 
-my ($subscribe, $publish, $quiet, $host, $port, $help);
+my ($subscribe, $publish, $queue, $remove, $quiet, $host, $port, $help);
 $subscribe = -1;
 $quiet = 1 unless -t \*STDIN;
 my $ok = GetOptions(
   "subscribe" => \$subscribe,
   "publish"   => \$publish,
+  "queue=s"   => \$queue,
+  "remove"    => \$remove,
   "host=s"    => \$host,
   "port=s"    => \$port,
   "quiet"     => \$quiet,
@@ -45,20 +48,26 @@ my $ok = GetOptions(
 usage() unless $ok;
 usage() if $help;
 
-$subscribe = 0 if $subscribe == -1 && $publish;
+usage("The remove operation requires a queue identifier")
+  if $remove && !$queue;
+
+$subscribe = 0 if $subscribe == -1 && ($publish || $remove);
 usage("Only one off 'subscribe' or 'publish' can be used")
   if $subscribe && $publish;
 
 my @topics = @ARGV;
 @ARGV = ();
-usage("Need set of topics to publish/subscribe to") unless @topics;
+usage("Need set of topics to publish/subscribe to") unless $remove || @topics;
 
 # Run the proper role
 if ($subscribe) {
   subscriber();
 }
-else {
+elsif ($publish) {
   publisher();
+}
+elsif ($queue && $remove) {
+  queue_remove();
 }
 
 
@@ -134,6 +143,25 @@ sub publisher {
       });
     }
   }
+}
+
+sub queue_remove {
+  my $ua = LWP::UserAgent->new;
+  $ua->timeout(2);
+  
+  # Hack! Move this to Protocol eventually
+  $host ||= '127.0.0.1';
+  my $url = "http://$host:3380/broker/admin";
+  my $response = $ua->post($url, Content => "QUEUE:$queue");
+  
+  if (! $response->is_success) {
+    diag("ERROR while removing queue '$queue'");
+    diag("Full HTTP response: \n",$response->as_string);
+    
+    exit(1);
+  }
+  
+  return;
 }
 
 
@@ -224,6 +252,9 @@ sub usage {
       
       Subscribe is the default. You cannot use --subscribe and --publish 
       simultaneously.
+      
+      --queue       specify the qeueu to work with
+      --remove      removes the specified queue
       
       --host        connect to a specific host [defaults to 127.0.0.1]
       --port        connect to a specific TCP port [default to 3322]
