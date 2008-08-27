@@ -449,6 +449,7 @@ sub _set_state {
   my ($self, $new_state) = @_;
   
   $self->{state} = $new_state;
+  $self->_optional_callback("state_$new_state");
 }
 
 
