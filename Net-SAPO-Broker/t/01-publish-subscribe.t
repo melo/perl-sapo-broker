@@ -9,7 +9,7 @@ use Net::SAPO::Broker;
 END { _cleanup_all_queues() }
 
 if ($ENV{TEST_SAPO_BROKER}) {
-  plan tests => 50;
+  plan tests => 52;
 }
 else {
   plan 'skip_all',
@@ -253,9 +253,15 @@ $sbc->subscribe({
   on_message => sub {
     (undef, $recv_mesg) = @_;
   },
-  ack => 1,
+  ack_id => 'omfg!',
+  on_success => sub {
+    (undef, $suc_id) = @_;
+  },
 });
+$suc_id = undef;
 $sbc->deliver_messages(1);
+ok($suc_id, 'Got a success message to our subscribe');
+is($suc_id, 'omfg!', '... with the expected ID');
 
 $sb->publish({
   topic   => '/test/taq',
