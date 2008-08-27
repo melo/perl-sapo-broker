@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 133;
+use Test::More tests => 146;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -304,11 +304,52 @@ $r = $sb_consumer->incoming_data(
 ok(! defined($r), 'Sent Notif with active subscription, matching topic');
 is($cb2_notif->topic, $valid_topic,    '... even got the destination right');
 is($cb2_notif->payload, $inv_payload,  '... and our second active subscription did catch it');
+is($cb2_notif->matched, $tq_dest,      '... matched our topic_as_queue subscription');
 is($sb_consumer, $cb2_sb, 'Proper Protocol object in callback also');
 
 is($cb1_notif->payload,  $cb2_notif->payload, 'Callback for subs 1 and subs 2 have same payload');
 is($cb1_notif->topic,    $cb2_notif->topic,   '... even got the same destination');
 is($cb1_sb, $cb2_sb,                          '... and the same Protocol object');
+
+
+# Test the Acks
+undef($_) for ($msg, $msg_s);
+my $m_id      = $cb2_notif->id;
+my $m_matched = $cb2_notif->matched;
+
+lives_ok { $cb2_notif->ack() } 'Sending ack over correct connection';
+ok($msg_s, 'Sent over proper connection');
+ok(!defined($msg), '... and the other is clean');
+ok(
+  $msg_s =~ m{<b:Ack\s},
+  'It is an Ack message',
+);
+ok(
+  $msg_s =~ m{<b:MessageId>$m_id</b:MessageId>},
+  '... proper Id in Ack message',
+);
+ok(
+  $msg_s =~ m{<b:DestinationName>$m_matched</b:DestinationName>},
+  '... proper DestinationName in Ack message',
+);
+
+undef($_) for ($msg, $msg_s);
+
+lives_ok { $cb2_notif->ack($sb) } 'Sending ack over alternate connection';
+ok($msg, 'Sent over proper connection');
+ok(!defined($msg_s), '... and the other is clean');
+ok(
+  $msg =~ m{<b:Ack\s},
+  'it is an Ack message',
+);
+ok(
+  $msg =~ m{<b:MessageId>$m_id</b:MessageId>},
+  '... proper Id in Ack message',
+);
+ok(
+  $msg =~ m{<b:DestinationName>$m_matched</b:DestinationName>},
+  '... proper DestinationName in Ack message',
+);
 
 
 # Publish with on_success callback

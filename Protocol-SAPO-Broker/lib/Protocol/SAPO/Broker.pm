@@ -128,11 +128,30 @@ sub subscribe {
   });
 }
 
+sub ack {
+  my $self = shift;
+  
+  my $args = _parse_common_args(@_);
+  
+  croak("Missing required parameter 'queue', ")
+    unless $args->{queue};
+  croak("Missing required parameter 'id', ")
+    unless exists $args->{id};
+
+  # In Ack messages, our Queue is sent on a DestinationName
+  $args->{topic} = delete $args->{queue};
+  
+  return $self->_send_message({
+    %$args,
+    mesg => 'Ack',
+  });
+}
+
 sub _parse_common_args {
   my ($args) = @_;
   my %clean;
   
-  foreach my $f (qw( topic payload ack as_queue id
+  foreach my $f (qw( topic payload ack as_queue id queue
                      on_message on_success on_error )) {
     $clean{$f} = $args->{$f} if exists $args->{$f};
   }
