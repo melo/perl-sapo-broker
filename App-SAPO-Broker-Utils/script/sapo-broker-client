@@ -162,7 +162,9 @@ sub subscriber {
         }
       },
       on_message => sub {
-        my (undef, $payload, $topic) = @_;
+        my (undef, $notif) = @_;
+        my $payload = $notif->payload;
+        my $topic   = $notif->topic;
         my ($now, $count, $rate, $delta) = _calc_rate($topic);
 
         my $rt = sprintf('%0.3f mesg/sec (%d messages)', $rate, $count);
@@ -293,7 +295,9 @@ sub load_collector {
         }
       },
       on_message => sub {
-        my (undef, $payload, $topic) = @_;
+        my (undef, $notif) = @_;
+        my $payload = $notif->payload;
+        my $topic   = $notif->topic;
         
         if ($payload =~ m/--- start: count (\d+) rate ([\d.]+) size (\d+)( overhead (\d+))?/) {
           my ($count, $rate, $size, $overh) = ($1, $2, $3, $5);
