@@ -121,10 +121,18 @@ my $sb_consumer = Protocol::SAPO::Broker->new({
   auto_connect => 1,
   on_connect => sub { my $lsb = shift; return $lsb->connected($$ % 13) },
   on_send    => sub { (undef, undef, $msg_s) = @_; return },
-  on_trace_incoming => sub { (undef, $i_msg_s) = @_; return },
   on_unmatched_message => sub {
     (undef, $missed_pay, $missed_dest, $mesg, $xdoc) = @_;
     return;
+  },
+  on_trace_incoming => sub {
+    my (undef, $soap) = @_;
+    diag("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    $i_msg_s = $soap;
+  },
+  on_trace_outgoing => sub {
+    my (undef, $soap) = @_;
+    diag("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
 });
 ok($sb, 'Created a Protocol::SAPO::Broker instance for subscriber');
