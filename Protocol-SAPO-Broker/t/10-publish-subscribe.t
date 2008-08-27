@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 146;
+use Test::More tests => 147;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -449,8 +449,8 @@ is($suc_id, $ack_id, '... with the proper value');
 # Subscribe with on_success callback and a real ID
 my $my_id = '12314232';
 $r = $sb->subscribe({
-  topic => '/test/with_success_callback_and_id',
-  id    => $my_id,
+  topic  => '/test/with_success_callback_and_id',
+  ack_id => $my_id,
   on_success => sub {
     (undef, $suc_id) = @_;
   }
@@ -460,12 +460,12 @@ ok(
   $msg =~ m/:action-id=['"](.+?)['"](\s|>)/,
   "Message with action_id so ack requested",
 );
+$ack_id = $1;
+is($ack_id, $my_id, '... with the expected value');
 ok(
   $msg !~ m/:MessageId>/,
   "Subscribe with ack_id does not generate a MessageId field",
 );
-$ack_id = $1;
-is($ack_id, $my_id, '... with the expected value');
 
 $suc_id = $ack_error = undef;
 $sb->incoming_data(
@@ -541,6 +541,7 @@ $suc_id = $ack_id = $ack_error = undef;
 $r = $sb->publish({
   topic   => '/test/multiple1',
   payload => $my_id,
+  ack_id  => 'omfg!',
   on_success => sub {
     (undef, $suc_id) = @_;
   },
@@ -554,6 +555,8 @@ ok(
   "Message with action_id so ack requested",
 );
 $ack_id = $1;
+diag("MSG $ack_id $msg");
+is($ack_id, 'omfg!', '... proper ack_id generated');
 
 $suc_id = $ack_error = undef;
 $sb->incoming_data(

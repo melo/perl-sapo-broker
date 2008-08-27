@@ -85,10 +85,6 @@ sub publish {
   croak("Missing required parameter 'payload', ")
     unless exists $args->{payload};
 
-  # If present the message ID is also used as ack_id
-  # It will only be used if ack's where requested!
-  $args->{ack_id} = $args->{id};
-
   return $self->_send_message({
     %$args,
     mesg      => 'Publish',
@@ -105,10 +101,6 @@ sub subscribe {
 
   my $dest_name = delete $args->{topic};
   my $dest_type = 'TOPIC';
-  
-  # The ID is to be used as ack_id only
-  # It will only be used if ack's where requested!
-  $args->{ack_id} = delete $args->{id};
   
   if (my $queue_name = delete $args->{as_queue}) {
     $dest_name = "$queue_name\@$dest_name";
@@ -152,7 +144,7 @@ sub _parse_common_args {
   my %clean;
   
   foreach my $f (qw( topic payload ack as_queue id queue
-                     on_message on_success on_error )) {
+                     on_message on_success on_error ack_id )) {
     $clean{$f} = $args->{$f} if exists $args->{$f};
   }
   
@@ -162,14 +154,18 @@ sub _parse_common_args {
   }
 
   # Enable ack if we ask for feedback
-  foreach my $f (qw( on_success on_error )) {
+  foreach my $f (qw( on_success on_error ack_id )) {
     $clean{ack} = 1 if exists $clean{$f};
   }
 
   # Check for valid queue ID
   croak("Missing valid parameter 'as_queue', ")
     if exists $clean{as_queue} && !$clean{as_queue};
-  
+
+  # If present the message ID is also used as a default ack_id
+  # It will only be used if ack's where requested!
+  $clean{ack_id} = $clean{id} unless $clean{ack_id};
+
   return \%clean;
 }
 
