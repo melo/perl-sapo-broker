@@ -228,6 +228,9 @@ sub _send_message {
     .= qq{</b:$args->{mesg}>}
     .  q{</s:Body></s:Envelope>};
 
+  # Trace stuff
+  $self->_optional_callback('trace_outgoing', $soap_msg);
+
   # wire-level frame: lenght prefix + payload
   substr( $soap_msg, 0, 0 ) = pack( 'N', length($soap_msg) );
   
@@ -237,7 +240,8 @@ sub _send_message {
 sub _receive_message {
   my ($self, $payload) = @_;
   
-  $self->_optional_callback('receive', $payload);
+  # Trace stuff
+  $self->_optional_callback('trace_incoming', $payload);
   
   # Parse the XML
   my $xdoc = eval { _parse_xml($payload) };
