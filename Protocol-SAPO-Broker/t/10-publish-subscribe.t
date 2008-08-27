@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 138;
+use Test::More tests => 133;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -230,17 +230,18 @@ is(ref($xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
 
 # Subscribe with callback, receive notif, check if matched
 my $valid_topic = '/real_test';
-my ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc);
+my ($cb1_sb, $cb1_notif);
 $r = $sb_consumer->subscribe({
   topic => $valid_topic,
   on_message => sub {
-    ($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc) = @_;
+    ($cb1_sb, $cb1_notif) = @_;
     return;
   },
 });
 
 
 # Message from a unkown subscription
+undef($_) for ($cb1_sb, $cb1_notif);
 $r = $sb_consumer->incoming_data(
   _build_frame(
     _mk_notification(
@@ -249,43 +250,40 @@ $r = $sb_consumer->incoming_data(
   )
 );
 ok(! defined($r), 'Sent Notif with active subscription, but wrong topic');
-isnt($cb1_pay, $inv_payload, '... and our active subscription didnt catch it');
-isnt($cb1_dest, $inv_topic,  '... not even a small register of it');
-ok(!defined($cb1_mesg),      '... so message is undef');
-ok(!defined($cb1_xdoc),      '... and XPath is undef');
-
+ok(! defined($cb1_notif), '... and our active subscription didnt catch it');
+ok(! defined($cb1_sb),    '... really didnt catch it');
 
 # Message for a matching topic
 $r = $sb_consumer->incoming_data(
   _build_frame(
     _mk_notification(
-      $valid_topic, $inv_payload,
+      $valid_topic, $inv_payload, undef, "$$ $$ $$",
     )
   )
 );
 ok(! defined($r), 'Sent Notif with active subscription, matching topic');
-is($cb1_pay, $inv_payload,  '... and our active subscription did catch it');
-is($cb1_dest, $valid_topic, '... even got the destination right');
-is(ref($cb1_mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
-is(ref($cb1_xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
+is($cb1_notif->payload, $inv_payload,  '... and our active subscription did catch it');
+is($cb1_notif->topic, $valid_topic,    '... even got the destination right');
+is($cb1_notif->matched, $valid_topic,  '... proper matched entry');
+is($cb1_notif->id, "$$ $$ $$",         '... proper message id');
 is($sb_consumer, $cb1_sb, 'Proper Protocol object in callback also');
+is(ref($cb1_notif->message),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
 
 
 # Activate second subscription over same topic
-my ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc);
+my ($cb2_sb, $cb2_notif);
 $r = $sb_consumer->subscribe({
   topic => $valid_topic,
   as_queue => 'q1',
   on_message => sub {
-    ($cb2_sb, $cb2_pay, $cb2_dest, $cb2_mesg, $cb2_xdoc) = @_;
+    ($cb2_sb, $cb2_notif) = @_;
     return;
   },
 });
 
 
 # Message for a matching topic (two matches)
-($cb1_sb, $cb1_pay, $cb1_dest, $cb1_mesg, $cb1_xdoc) =
-(undef,   undef,    undef,     undef,     undef,     undef  );
+($cb1_sb, $cb1_notif) = (undef, undef);
 
 my $tq_dest = "q1\@$valid_topic";
 $r = $sb_consumer->incoming_data(
@@ -304,17 +302,13 @@ $r = $sb_consumer->incoming_data(
   )
 );
 ok(! defined($r), 'Sent Notif with active subscription, matching topic');
-is($cb2_dest, $valid_topic, '... even got the destination right');
-is($cb2_pay, $inv_payload,  '... and our second active subscription did catch it');
-is(ref($cb2_mesg),  'XML::LibXML::Element', 'Proper class in message parameter');
-is(ref($cb2_xdoc),  'XML::LibXML::XPathContext', 'Proper class in XPath parameter');
+is($cb2_notif->topic, $valid_topic,    '... even got the destination right');
+is($cb2_notif->payload, $inv_payload,  '... and our second active subscription did catch it');
 is($sb_consumer, $cb2_sb, 'Proper Protocol object in callback also');
 
-is($cb1_pay,  $cb2_pay,    'Callback for subs 1 and subs 2 have same payload');
-is($cb1_dest, $cb2_dest,   '... even got the same destination');
-is($cb1_sb,   $cb2_sb,     '... and the same Protocol object');
-isnt($cb1_mesg, $cb2_mesg, '... but not the same message element');
-isnt($cb1_xdoc, $cb2_xdoc, '... nor the same XPath context');
+is($cb1_notif->payload,  $cb2_notif->payload, 'Callback for subs 1 and subs 2 have same payload');
+is($cb1_notif->topic,    $cb2_notif->topic,   '... even got the same destination');
+is($cb1_sb, $cb2_sb,                          '... and the same Protocol object');
 
 
 # Publish with on_success callback
@@ -597,8 +591,9 @@ TODO: {
 # Utils
 
 sub _mk_notification {
-  my ($topic, $payload, $wsa_to) = @_;
+  my ($topic, $payload, $wsa_to, $id) = @_;
   $wsa_to ||= $topic;
+  $id ||= 'ID:1276859168';
   
   my $msg = <<EOF;
     <soap:Envelope
@@ -617,7 +612,7 @@ sub _mk_notification {
     		<mq:Notification>
     			<mq:BrokerMessage>
     				<mq:Priority>4</mq:Priority>
-    				<mq:MessageId>ID:1276859168</mq:MessageId>
+    				<mq:MessageId>$id</mq:MessageId>
     				<mq:Timestamp/>
     				<mq:Expiration>2007-08-19T09:55:23Z</mq:Expiration>
     				<mq:DestinationName>##MYTOPIC##</mq:DestinationName>

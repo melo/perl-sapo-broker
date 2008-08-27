@@ -3,6 +3,7 @@ package Protocol::SAPO::Broker;
 use warnings;
 use strict;
 use Carp::Clan qw(::SAPO::Broker$);
+use Protocol::SAPO::Broker::Notification;
 use Errno qw( ENOTCONN EPROTONOSUPPORT );
 use XML::LibXML;
 use XML::LibXML::XPathContext;
@@ -259,17 +260,29 @@ sub _process_notification {
   my ($self, $mesg, $xdoc) = @_;
   
   my $destination = $xdoc->findvalue('//mymq:DestinationName', $mesg);
+  my $id          = $xdoc->findvalue('//mymq:MessageId', $mesg);
   my $payload     = $xdoc->findvalue('//mymq:TextPayload', $mesg);
   my $to          = $xdoc->findvalue('//mywsa:To') || $destination;
   
+  # Destinations in TOPIC_AS_QUEUE "grow" an appendice, remove it
+  # Consistent with all the other modes: $destination is always the topic
   $destination =~ s/^[^@]+[@]//;
+  
+  my $notif = Protocol::SAPO::Broker::Notification->new({
+    sb      => $self,
+    id      => $id,
+    topic   => $destination,
+    payload => $payload,
+    matched => $to,
+    message => $xdoc,
+  });
 
   return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc)
     unless exists $self->{subs}{$to};
     
   my $subs = $self->{subs}{$to};
   foreach my $cb (@$subs) {
-    $cb->($self, $payload, $destination, $mesg, $xdoc);
+    $cb->($self, $notif);
   }
   
   return;
