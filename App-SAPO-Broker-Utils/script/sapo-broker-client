@@ -246,7 +246,9 @@ sub load_generator {
   diag("** You can abort with ^C at any time");
 
   diag("** Running....");
-  broadcast($sb, "--- start: count $count rate $rate size $size");
+  my $overh = $overhead || '';
+  $overh = " overhead $overh" if $overh;
+  broadcast($sb, "--- start: count $count rate $rate size $size$overh");
   my $start = [gettimeofday()];  
   my $mesg_number = 0;
   while (1) {
@@ -293,21 +295,24 @@ sub load_collector {
       on_message => sub {
         my (undef, $payload, $topic) = @_;
         
-        if ($payload =~ m/--- start: count (\d+) rate ([\d.]+) size (\d+)/) {
-          my ($count, $rate, $size) = ($1, $2, $3);
+        if ($payload =~ m/--- start: count (\d+) rate ([\d.]+) size (\d+)( overhead (\d+))?/) {
+          my ($count, $rate, $size, $overh) = ($1, $2, $3, $5);
+          $overh ||= $overhead;
           $load_stats{$topic} = {
-            count   => $count,
-            rate    => $rate,
-            size    => $size,
-            start_t => [gettimeofday()],
-            last_m  => 0,
-            recv_n  => 0,
-            ooo_n   => 0,
-            miss_n  => 0,
-            mesg_t  => [],
+            count    => $count,
+            rate     => $rate,
+            size     => $size,
+            overhead => $overh,
+            start_t  => [gettimeofday()],
+            last_m   => 0,
+            recv_n   => 0,
+            ooo_n    => 0,
+            miss_n   => 0,
+            mesg_t   => [],
           };
           diag("-- Starting load collector run for topic '$topic'");
           diag("-- Parameters: count $count, rate $rate, size $size");
+          diag("-- Overhead per message set to $overh us") if $overh;
           return;
         }
         
@@ -329,6 +334,7 @@ sub load_collector {
           diag("-- Load collector run for topic '$topic' done!");
           diag("** Parameters: count $t->{count}, rate $t->{rate}, size $t->{size}");
           diag("** Elapsed seconds: $t->{delta}");
+          diag("** Overhead per message: $t->{overhead} us") if $t->{overhead};
           diag("** Received messages: $t->{recv_n}");
           diag("** Missed messages: $t->{miss_n}");
           diag("** Out-of-order messages: $t->{ooo_n}");
@@ -350,6 +356,9 @@ sub load_collector {
           else {
             $t->{ooo_n}++;
           }
+          
+          my $overh = $t->{overhead};
+          usleep($overh) if $overh;
         }
       }
     });
@@ -555,6 +564,7 @@ sub usage {
         --count=N     how many messages to generate [defaults to 1000]
         --size=N      size of each payload [default to 70 bytes]
         --rate=N      desired messages per second (approximation)
+        --overhead=u  microseconds of overhead per message
         
         * rate can be decimal value, must be 0 or above;
         * rate of 0 means maximum speed (useful to test slow clients);
@@ -563,13 +573,23 @@ sub usage {
         
         Rates above 4000 are very unreliable due to usleep granularity.
         
+        The --overhead has no impact on the Load Generator. It is sent
+        to the Load Collector and overrides its own --overhead.
+        
     
      Load Collector:
         --collector   starts a load collector for each topic
+        --overhead=u  microseconds of overhead per message
         
         It will wait for a start of a run using the load generation mode
         on the same topic. After the end of the run, prints actual rate,
         missed messages and out-of-order messages.
+        
+        The --overhead parameter allows you to model your potencial rate
+        using 'u' microseconds per message. To have a overhead of 1 second
+        per message, you would use --overhead=1000000.
+        
+        The --overhead parameter can also be set by the Load Generator.
         
     
      Max Rate Calculations:
@@ -579,10 +599,8 @@ sub usage {
         This is the max rate of message processing. Message publishing is
         usually 3 to 4 times faster.
         
-        The --overhead parameter allows you to model your potencial rate
-        using 'u' microseconds per message. To have a overhead of 1 second
-        per message, you would use --overhead=1000000.
-        
+        See the --overhead explanation above, in the Load Collector section.
+                
         
      General options:
         --host        connect to a specific host [defaults to 127.0.0.1]
