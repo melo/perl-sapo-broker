@@ -14,10 +14,13 @@ no_index:
     - inc
     - t
 requires:
+  Benchmark: 0
   Getopt::Long: 0
   LWP::UserAgent: 0
   Net::SAPO::Broker: 0.01
   Time::HiRes: 0
+  XML::LibXML: 0
+  XML::LibXML::XPathContext: 0
   perl: 5.6.0
 resources:
   license: http://dev.perl.org/licenses/
