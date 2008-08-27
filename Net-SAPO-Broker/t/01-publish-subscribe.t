@@ -3,12 +3,20 @@
 use strict;
 use warnings;
 use Test::More tests => 51;
+use LWP::UserAgent;
 
 BEGIN {
 	use_ok( 'Net::SAPO::Broker' );
 }
 
+END {
+  _remove_queue('q@/test/xpto');
+  _remove_queue('taq1@/test/xpto');
+}
+
 diag( "Testing Net::SAPO::Broker $Net::SAPO::Broker::VERSION, Perl $], $^X" );
+_remove_queue('q@/test/xpto');
+_remove_queue('taq1@/test/xpto');
 
 SKIP: {
   skip(
@@ -277,4 +285,15 @@ SKIP: {
   is($recv_mesg->payload, "$$ $$",          '... with proper payload');
   is($recv_mesg->topic,   '/test/taq',      '... and with proper topic');
   is($recv_mesg->matched, 'taq1@/test/taq', '... and with proper match');
+}
+
+# Hack, no protocol support yet :((
+sub _remove_queue {
+  my ($queue) = @_;
+  
+  my $ua = LWP::UserAgent->new;
+  $ua->timeout(30);
+  
+  my $url = "http://$ENV{TEST_SAPO_BROKER}:3380/broker/admin";
+  $ua->post($url, Content => "QUEUE:$queue");
 }
