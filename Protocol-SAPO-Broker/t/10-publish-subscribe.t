@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 147;
+use Test::More tests => 156;
 use Test::Exception;
 use Errno qw( ENOTCONN );
 
@@ -585,6 +585,40 @@ $sb->incoming_data(
 ok(!defined($r), 'Incoming fault with correct id ok');
 ok(!defined($suc_id),    '... success callback not called');
 ok(!defined($ack_error), '... error callback not called');
+
+
+# Test a double consumer to the same topic
+
+my ($notif1, $notif2);
+$sb_consumer->subscribe({
+  topic => '/double-take',
+  on_message => sub {
+    (undef, $notif1) = @_;
+  }
+});
+$sb_consumer->subscribe({
+  topic => '/double-take',
+  on_message => sub {
+    (undef, $notif2) = @_;
+  }
+});
+$sb_consumer->incoming_data(
+  _build_frame(
+    _mk_notification(
+      '/double-take', "$$ $$", undef, '1234',
+    )
+  )
+);
+
+ok($notif1, 'Got notification on first consumer');
+is($notif1->payload, "$$ $$",      '... with proper payload');
+is($notif1->topic, '/double-take', '... with correct topic');
+is($notif1->id, '1234',            '... and expected id');
+ok($notif2, 'Got notification on second consumer');
+is($notif2->payload, "$$ $$",      '... with proper payload');
+is($notif2->topic, '/double-take', '... with correct topic');
+is($notif2->id, '1234',            '... and expected id');
+is($notif1, $notif2, 'Actually they are the same notification');
 
 
 # publish() (wrong API, failures)
