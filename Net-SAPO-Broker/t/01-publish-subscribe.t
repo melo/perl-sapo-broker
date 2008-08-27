@@ -10,13 +10,11 @@ BEGIN {
 }
 
 END {
-  _remove_queue('q@/test/xpto');
-  _remove_queue('taq1@/test/xpto');
+  _cleanup_all_queues();
 }
 
 diag( "Testing Net::SAPO::Broker $Net::SAPO::Broker::VERSION, Perl $], $^X" );
-_remove_queue('q@/test/xpto');
-_remove_queue('taq1@/test/xpto');
+_cleanup_all_queues();
 
 SKIP: {
   skip(
@@ -284,3 +282,10 @@ sub _remove_queue {
   my $url = "http://$ENV{TEST_SAPO_BROKER}:3380/broker/admin";
   $ua->post($url, Content => "QUEUE:$queue");
 }
+
+sub _cleanup_all_queues {
+  _remove_queue('q@/test/ypto');
+  _remove_queue('q@/test/xpto');
+  _remove_queue('taq1@/test/taq');
+}
+
