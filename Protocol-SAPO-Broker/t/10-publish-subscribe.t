@@ -563,7 +563,6 @@ ok(
   "Message with action_id so ack requested",
 );
 $ack_id = $1;
-diag("MSG $ack_id $msg");
 is($ack_id, 'omfg!', '... proper ack_id generated');
 
 $suc_id = $ack_error = undef;
