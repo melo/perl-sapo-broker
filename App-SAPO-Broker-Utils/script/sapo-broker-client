@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use 5.006;
-use Time::HiRes qw( gettimeofday tv_interval sleep );
+use Time::HiRes qw( gettimeofday tv_interval sleep usleep );
 use Benchmark qw( timethese );
 use XML::LibXML;
 use XML::LibXML::XPathContext;
@@ -39,7 +39,7 @@ my (
   $queue, $remove,
   $count, $rate, $size,
   $collector,
-  $max_rate,
+  $max_rate, $overhead,
   $quiet, $help,
   $host, $port,
 );
@@ -60,7 +60,8 @@ my $ok = GetOptions(
   
   "collector" => \$collector,
   
-  "max-rate"  => \$max_rate,
+  "max-rate"   => \$max_rate,
+  "overhead=i" => \$overhead,
   
   "host=s"    => \$host,
   "port=s"    => \$port,
@@ -361,10 +362,15 @@ sub load_collector {
 }
 
 sub max_rate {
-  my $t_iters = 50_000;
+  my $total_t = 10;
   
   diag("** Calculating the max rate of SAPO Broker messaging processing");
-  diag("-- Using $t_iters rounds...");
+  if ($overhead) {
+    diag("-- $total_t seconds run, with a overhead of $overhead us per mesg");
+  }
+  else {
+    diag("-- $total_t seconds run");
+  }
   
   my $soap_message = q{
     <soap:Envelope
@@ -395,10 +401,10 @@ sub max_rate {
 
   my $parser = XML::LibXML->new;
 
+  my $elapsed = 0;
+  my $t_iters = 0;
   my $t0 = [gettimeofday()];
-  
-  my $iters = $t_iters;
-  while ($iters--) {
+  while ($elapsed < $total_t) {
     my $xdoc = $parser->parse_string($soap_message);
     $xdoc = XML::LibXML::XPathContext->new($xdoc);
     $xdoc->registerNs( mysoap => 'http://www.w3.org/2003/05/soap-envelope' );
@@ -409,13 +415,16 @@ sub max_rate {
     my $destination = $xdoc->findvalue('//mymq:DestinationName', $msg);
     my $payload     = $xdoc->findvalue('//mymq:TextPayload', $msg);
     my $to          = $xdoc->findvalue('//mywsa:To');
+    
+    usleep($overhead) if $overhead;
+    $elapsed = tv_interval($t0);
+    $t_iters++;
   }
-  my $elapsed = tv_interval($t0);
 
   diag(
-    '** Max rate is ',
+    '** Max rate was ',
     sprintf('%0.2f', $t_iters / ($elapsed || 1) ),
-    ' mesg/sec.'
+    " mesg/sec ($t_iters total iterations)"
   );
 }
 
@@ -565,9 +574,14 @@ sub usage {
     
      Max Rate Calculations:
         --max-rate    calculates the maximum rate of messages per thread
+        --overhead=u  microseconds of overhead per message
         
         This is the max rate of message processing. Message publishing is
         usually 3 to 4 times faster.
+        
+        The --overhead parameter allows you to model your potencial rate
+        using 'u' microseconds per message. To have a overhead of 1 second
+        per message, you would use --overhead=1000000.
         
         
      General options:
