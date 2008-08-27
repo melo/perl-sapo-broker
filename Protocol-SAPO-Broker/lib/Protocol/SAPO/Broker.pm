@@ -13,6 +13,16 @@ sub new {
   my ($class, $args) = @_;
   $args ||= {};
   
+  my $self = bless {}, $class;
+
+  return $self->init($args) unless delete $args->{skip_init};
+  return $self;
+}
+
+sub init {
+  my ($self, $args) = @_;
+  $args ||= {};
+  
   # Agent location
   my $host = $args->{host} || '127.0.0.1';
   my $port = $args->{port} || 3322;
@@ -27,15 +37,13 @@ sub new {
     $cbs{$1} = $v;
   }
   
-  # Create protocol state machine
-  my $self = bless {
-    state     => 'idle',
-    host      => $host,
-    port      => $port,
-    auto_conn => $auto_conn,
-    cb        => \%cbs,
-  }, $class;
-  
+  # Init protocol state machine
+  $self->{state}     = 'idle';
+  $self->{host}      = $host;
+  $self->{port}      = $port;
+  $self->{auto_conn} = $auto_conn;
+  $self->{cb}        = \%cbs;
+
   # Do auto-connect if asked for
   $self->connect() if $auto_conn;
   

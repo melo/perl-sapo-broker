@@ -1,6 +1,6 @@
 #!perl -T
 
-use Test::More tests => 45;
+use Test::More tests => 64;
 use Test::Exception;
 use Errno qw( ENOTCONN EPIPE ECONNRESET );
 
@@ -135,4 +135,55 @@ $sb->incoming_data(undef);
 ok($eof,                 'read error called proper callback');
 is($sb->state, 'idle',   '... and state is up-to-date');
 ok(!defined($sb->error), '... and the error flag is cleared');
+
+# Test the new()/init() split
+lives_ok {
+  $sb = Protocol::SAPO::Broker->new({
+    skip_init => 1,
+    host => '1.1.1.1',
+    port => '4444',
+  })
+} 'We can create a instance without problems using skip_init';
+
+ok(!defined($sb->host),  '... host will be undefined');
+ok(!defined($sb->port),  '... port will be undefined');
+ok(!defined($sb->state), '... and state will be undefined');
+
+# Now init but with missing parameters
+throws_ok { $sb->init }
+    qr/Missing callback 'connect', /,
+    'Missing required parameters (callbacks)';
+
+# And now with proper parameters
+$r = $sb->init({ auto_connect => 0 });
+ok($r, 'Init a Protocol::SAPO::Broker instance');
+is($sb->host, '127.0.0.1', '... proper default host');
+is($sb->port, '3322',      '... proper default port');
+is($sb->state, 'idle',     '... proper initial state');
+
+# And now with proper parameters
+lives_ok {
+  $sb = Protocol::SAPO::Broker->new({ skip_init => 1 })
+} 'New instance, with skip_init';
+lives_ok {
+  $r = $sb->init({ auto_connect => 0 });
+} 'No problems init without connect';
+is($sb->host, '127.0.0.1', '... proper default host');
+is($sb->port, '3322',      '... proper default port');
+is($sb->state, 'idle',     '... proper initial state');
+
+# And now with proper parameters
+lives_ok {
+  $sb = Protocol::SAPO::Broker->new({ skip_init => 1 })
+} 'New instance, with skip_init';
+lives_ok {
+  $r = $sb->init({
+    host => '127.0.0.2',
+    port => '2233',
+    on_connect => sub { $conn++ },
+  })
+} 'Inited with auto_connect on';
+is($sb->host, '127.0.0.2',   '... proper host');
+is($sb->port, '2233',        '... proper port');
+is($sb->state, 'connecting', '... proper state');
 
