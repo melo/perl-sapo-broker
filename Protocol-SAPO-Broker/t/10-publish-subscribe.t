@@ -636,8 +636,10 @@ TODO: {
 
 sub _mk_notification {
   my ($topic, $payload, $wsa_to, $id) = @_;
-  $wsa_to ||= $topic;
+  $wsa_to ||= '';
   $id ||= 'ID:1276859168';
+  
+  $wsa_to = "<wsa:To>$wsa_to</wsa:To>" if $wsa_to;
   
   my $msg = <<EOF;
     <soap:Envelope
@@ -645,7 +647,7 @@ sub _mk_notification {
     	xmlns:wsa="http://www.w3.org/2005/08/addressing"
     	xmlns:mq="http://services.sapo.pt/broker">
     	<soap:Header>
-    	  <wsa:To>$wsa_to</wsa:To>
+    	  $wsa_to
     		<wsa:From>
     			<wsa:Address>broker://agent/agent-name/##MYTOPIC##</wsa:Address>
     		</wsa:From>
