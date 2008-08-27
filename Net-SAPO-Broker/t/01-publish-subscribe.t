@@ -39,6 +39,14 @@ SKIP: {
     on_unknown_message => sub {
       (undef, $ukn_message) = @_;
     },
+    on_trace_incoming => sub {
+      my (undef, $soap) = @_;
+      diag("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    },
+    on_trace_outgoing => sub {
+      my (undef, $soap) = @_;
+      diag("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    },
   });
   ok($sb, 'Seccond connection ok');
   is($sb->state, 'connected', 'Good connection now');
@@ -69,6 +77,14 @@ SKIP: {
     },
     on_unknown_message => sub {
       (undef, $ukn_message_c) = @_;
+    },
+    on_trace_incoming => sub {
+      my (undef, $soap) = @_;
+      diag("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    },
+    on_trace_outgoing => sub {
+      my (undef, $soap) = @_;
+      diag("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
     },
   });  
   ok($sbc, 'Consumer connection ok');
