@@ -281,7 +281,8 @@ sub _process_notification {
   my $destination = $xdoc->findvalue('//mymq:DestinationName', $mesg);
   my $id          = $xdoc->findvalue('//mymq:MessageId', $mesg);
   my $payload     = $xdoc->findvalue('//mymq:TextPayload', $mesg);
-  my $to          = $xdoc->findvalue('//mywsa:To') || $destination;
+  my $to          = $xdoc->findvalue('//mywsa:To');
+  $to = $destination unless $to;
   
   # Destinations in TOPIC_AS_QUEUE "grow" an appendice, remove it
   # Consistent with all the other modes: $destination is always the topic
