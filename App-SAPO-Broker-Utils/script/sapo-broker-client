@@ -4,6 +4,9 @@ use strict;
 use warnings;
 use 5.006;
 use Time::HiRes qw( gettimeofday tv_interval sleep );
+use Benchmark qw( timethese );
+use XML::LibXML;
+use XML::LibXML::XPathContext;
 
 # Make sure we have the proper dependencies installed
 my @deps = qw(
@@ -36,6 +39,7 @@ my (
   $queue, $remove,
   $count, $rate, $size,
   $collector,
+  $max_rate,
   $quiet, $help,
   $host, $port,
 );
@@ -55,6 +59,8 @@ my $ok = GetOptions(
   "size=s"    => \$size,
   
   "collector" => \$collector,
+  
+  "max-rate"  => \$max_rate,
   
   "host=s"    => \$host,
   "port=s"    => \$port,
@@ -94,6 +100,12 @@ if ($collector) {
   $mode = 'load collector';
 }
 
+if ($max_rate) {
+  usage("Max rate operations and $mode operations are incompatible")
+    if $mode;
+  $mode = 'max rate';
+}
+
 if ($publish || $mode) {
   usage("Only one off 'subscribe' or 'publish' can be used")
       if $subscribe && $publish;
@@ -120,6 +132,9 @@ elsif (defined($rate)) {
 elsif ($collector) {
   usage("Need set of topics for load collection") unless @topics;
   load_collector();
+}
+elsif ($max_rate) {
+  max_rate();
 }
 else {
   usage("Need set of topics to subscribe") unless @topics;
@@ -345,6 +360,64 @@ sub load_collector {
   while ($sb->state eq 'connected') { $sb->deliver_messages(1) };
 }
 
+sub max_rate {
+  my $t_iters = 50_000;
+  
+  diag("** Calculating the max rate of SAPO Broker messaging processing");
+  diag("-- Using $t_iters rounds...");
+  
+  my $soap_message = q{
+    <soap:Envelope
+  		xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+  		xmlns:wsa="http://www.w3.org/2005/08/addressing"
+  		xmlns:mq="http://services.sapo.pt/broker">
+  		<soap:Header>
+    		<wsa:To>Sample.*</wsa:To>
+  			<wsa:From>
+  				<wsa:Address>broker://agent/agent-name/SampleTopic1</wsa:Address>
+  			</wsa:From>
+  			<wsa:Action>http://services.sapo.pt/broker/notification/</wsa:Action>
+  			<wsa:MessageID>http://services.sapo.pt/broker/message/4e982250-239c-4e25-b177-11774e8090a7</wsa:MessageID>
+  		</soap:Header>
+  		<soap:Body>
+  			<mq:Notification>
+  				<mq:BrokerMessage>
+  					<mq:MessageId>4e982250-239c-4e25-b177-11774e8090a7</mq:MessageId> <!-- elemento opcional -->
+  					<mq:Timestamp>2006-02-21T13:04:49Z</mq:Timestamp> <!-- elemento opcional -->
+  					<mq:Expiration>2006-02-21T14:44:49Z</mq:Expiration> <!-- elemento opcional -->
+  					<mq:DestinationName>SampleTopic1</mq:DestinationName>
+  					<mq:TextPayload>Lorem ipsum dolor sit amet, consectetuer adipiscing elit.</mq:TextPayload>
+  				</mq:BrokerMessage>
+  			</mq:Notification>
+  		</soap:Body>
+  	</soap:Envelope>
+  };
+
+  my $parser = XML::LibXML->new;
+
+  my $t0 = [gettimeofday()];
+  
+  my $iters = $t_iters;
+  while ($iters--) {
+    my $xdoc = $parser->parse_string($soap_message);
+    $xdoc = XML::LibXML::XPathContext->new($xdoc);
+    $xdoc->registerNs( mysoap => 'http://www.w3.org/2003/05/soap-envelope' );
+    $xdoc->registerNs( mymq   => 'http://services.sapo.pt/broker'          );
+    $xdoc->registerNs( mywsa  => 'http://www.w3.org/2005/08/addressing'    );
+    
+    my ($msg) = $xdoc->findnodes('//mysoap:Body/mymq:*');
+    my $destination = $xdoc->findvalue('//mymq:DestinationName', $msg);
+    my $payload     = $xdoc->findvalue('//mymq:TextPayload', $msg);
+    my $to          = $xdoc->findvalue('//mywsa:To');
+  }
+  my $elapsed = tv_interval($t0);
+
+  diag(
+    '** Max rate is ',
+    sprintf('%0.2f', $t_iters / ($elapsed || 1) ),
+    ' mesg/sec.'
+  );
+}
 
 ### Agent connection
 
@@ -488,6 +561,13 @@ sub usage {
         It will wait for a start of a run using the load generation mode
         on the same topic. After the end of the run, prints actual rate,
         missed messages and out-of-order messages.
+        
+    
+     Max Rate Calculations:
+        --max-rate    calculates the maximum rate of messages per thread
+        
+        This is the max rate of message processing. Message publishing is
+        usually 3 to 4 times faster.
         
         
      General options:
