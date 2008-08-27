@@ -217,7 +217,7 @@ sub load_generator {
   my $sb = get_agent_connection();
   
   my $delay = 0;
-  $delay = 1 / $rate if $rate > 0;
+  $delay = 1 / ($rate*1.4) if $rate > 0;
 
   if ($count > 0) {
     diag("** Generating $count messages (payload size is $size)");
