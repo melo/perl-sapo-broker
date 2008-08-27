@@ -119,8 +119,8 @@ SKIP: {
   # It will wait at most 1 seconds
   $sbc->deliver_messages(1);
   ok($recv_mesg, "Got a message and it was matched");
-  is($recv_mesg, $$, '... and it has the proper payload');
-  ok(!defined($unmatched_c), '... and we didnt receive unmatched messages');
+  is($recv_mesg->payload, $$,  '... and it has the proper payload');
+  ok(!defined($unmatched_c),   '... and we didnt receive unmatched messages');
   ok(!defined($ukn_payload_c), '... nor any unimplemented payloads');
   ok(!defined($ukn_message_c), '... nor any unimplemented messages');
 
@@ -180,7 +180,7 @@ SKIP: {
   ok($unmatched_c, "Got a match caugth by the general handler");
   is($unmatched_c, $$, '... and it has the proper payload');
   ok($recv_mesg, "Got a match caugth by the specific handler");
-  is($recv_mesg, $$, '... and it has the proper payload');
+  is($recv_mesg->payload, $$,  '... and it has the proper payload');
   ok(!defined($ukn_payload_c), 'No unimplemented messages');
   
   # Clear status
@@ -219,7 +219,7 @@ SKIP: {
   ok($unmatched_c, "Got a match caugth by the general handler");
   is($unmatched_c, $$, '... and it has the proper payload');
   ok($recv_mesg, "Got a match caugth by the specific handler");
-  is($recv_mesg, $$, '... and it has the proper payload');
+  is($recv_mesg->payload, $$, '... and it has the proper payload');
   ok(!defined($ukn_payload_c), 'No unimplemented messages');
   
   # Test race condition
@@ -256,13 +256,11 @@ SKIP: {
   }
   
   # Test TOPIC_AS_QUEUE deliverires
-    $ENV{TEST_BROKER_VERBOSE} = 1;
-  my $recv_topic;
   $sbc->subscribe({
     topic      => '/test/taq',
     as_queue   => 'taq1',
     on_message => sub {
-      (undef, $recv_mesg, $recv_topic) = @_;
+      (undef, $recv_mesg) = @_;
     },
     ack => 1,
   });
@@ -273,9 +271,10 @@ SKIP: {
     payload => "$$ $$",
   });
   
-  $recv_mesg = $recv_topic = undef;
+  $recv_mesg = undef;
   $sbc->deliver_messages(1);
   ok($recv_mesg, 'Subscriber as queue got 1 message');
-  is($recv_mesg, "$$ $$",      '... with proper payload');
-  is($recv_topic, '/test/taq', '... and with proper topic');
+  is($recv_mesg->payload, "$$ $$",          '... with proper payload');
+  is($recv_mesg->topic,   '/test/taq',      '... and with proper topic');
+  is($recv_mesg->matched, 'taq1@/test/taq', '... and with proper match');
 }

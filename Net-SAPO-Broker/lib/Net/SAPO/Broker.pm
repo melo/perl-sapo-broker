@@ -2,7 +2,7 @@ package Net::SAPO::Broker;
 
 use warnings;
 use strict;
-use Protocol::SAPO::Broker;
+use base qw( Protocol::SAPO::Broker );
 use IO::Socket::INET;
 use IO::Select;
 
@@ -10,40 +10,17 @@ our $VERSION = '0.01';
 
 sub new {
   my ($class, $args) = @_;
-  my $self = bless {}, $class;
+  my $self = $class->SUPER::new({ skip_init => 1 });
 
   $args ||= {};
   $args->{on_connect} = sub { $self->_do_connect(@_) };
   $args->{on_send}    = sub { $self->_do_send(@_)    };
   
-  $self->{psb} = Protocol::SAPO::Broker->new($args);
+  $self->init($args);
   
   return $self;
 }
 
-### Common API
-
-sub state { return $_[0]{psb}->state }
-sub host  { return $_[0]{psb}->host  }
-sub port  { return $_[0]{psb}->port  }
-
-sub connect {
-  my $self = shift;
-  
-  return $self->{psb}->connect(@_);
-}
-
-sub publish {
-  my $self = shift;
-  
-  return $self->{psb}->publish(@_);
-}
-
-sub subscribe {
-  my $self = shift;
-  
-  return $self->{psb}->subscribe(@_);
-}
 
 ### Local API
 
@@ -51,27 +28,26 @@ sub deliver_messages {
   my ($self, $timeout) = @_;
   $timeout ||= 0;
   
-  my $psb  = $self->{psb};
-  my $sock = $psb->info();
+  my $sock = $self->info();
   
   my $select = IO::Select->new($sock);
   
   WAIT_FOR_DATA:
-  while($psb->state eq 'connected') {
+  while($self->state eq 'connected') {
     last WAIT_FOR_DATA unless $select->can_read($timeout);
     
     my $data;
     my $r = $sock->sysread($data, 32_000);
     
     if (!defined($r)) {
-      $psb->read_error($!);
+      $self->read_error($!);
     }
     elsif ($r) {
-      $r = $psb->incoming_data($data);
+      $r = $self->incoming_data($data);
       croak("Error in frame from network: $r") if $r;
     }
     else {
-      $psb->incoming_data(undef); # Signal EOF
+      $self->incoming_data(undef); # Signal EOF
     }
   }
   
