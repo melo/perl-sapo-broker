@@ -230,20 +230,7 @@ SKIP: {
   is($recv_mesg->payload, $$, '... and it has the proper payload');
   ok(!defined($ukn_payload_c), 'No unimplemented messages');
   
-  # Test race condition
-  $recv_mesg = undef;
-  $sbc->subscribe({
-    topic      => '/test/xpto',
-    as_queue   => 'q',
-    on_message => sub { (undef, $recv_mesg) = @_ },
-  });
-  $sb->publish({
-    topic => '/test/xpto',
-    payload => $$,
-  });
-  $sbc->deliver_messages(1);
-  ok(!defined($recv_mesg), 'Quick subscribe + publish can miss messages');
-
+  # Test race condition does not occour with ack's
   TODO: {
     todo_skip('wait_for_confirmation not implemented yet', 1);
     
