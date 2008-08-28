@@ -9,7 +9,7 @@ use Net::SAPO::Broker;
 END { _cleanup_all_queues() }
 
 if ($ENV{TEST_SAPO_BROKER}) {
-  plan tests => 54;
+  plan 'no_plan';
 }
 else {
   plan 'skip_all',
