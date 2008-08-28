@@ -88,6 +88,7 @@ sub publish {
   return $self->_send_message({
     %$args,
     mesg      => 'Publish',
+    dest_name => $args->{topic},
     wrapper   => 'BrokerMessage',
   });
 }
@@ -115,7 +116,7 @@ sub subscribe {
   return $self->_send_message({
     %$args,
     mesg      => 'Notify',
-    topic     => $dest_name,
+    dest_name => $dest_name,
     dest_type => $dest_type,
   });
 }
@@ -134,12 +135,10 @@ sub ack {
   croak("Missing valid parameter 'id', ")
     unless $args->{id};
 
-  # In Ack messages, our Queue is sent on a DestinationName
-  $args->{topic} = delete $args->{queue};
-  
   return $self->_send_message({
     %$args,
-    mesg => 'Ack',
+    mesg      => 'Ack',
+    dest_name => $args->{queue},
   });
 }
 
@@ -210,7 +209,7 @@ sub _send_message {
   
   # Order of the nodes is important! Specified as a SEQUENCE-OF in the WSDL
   # Deal with destination name (mandatory) and type (optional)
-  $soap_msg .= qq{<b:DestinationName>$args->{topic}</b:DestinationName>};
+  $soap_msg .= qq{<b:DestinationName>$args->{dest_name}</b:DestinationName>};
   $soap_msg .= qq{<b:DestinationType>$args->{dest_type}</b:DestinationType>}
     if $args->{dest_type};
 
