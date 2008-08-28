@@ -126,9 +126,13 @@ sub ack {
   my $args = _parse_common_args(@_);
   
   croak("Missing required parameter 'queue', ")
+    unless exists $args->{queue};
+  croak("Missing valid parameter 'queue', ")
     unless $args->{queue};
   croak("Missing required parameter 'id', ")
     unless exists $args->{id};
+  croak("Missing valid parameter 'id', ")
+    unless $args->{id};
 
   # In Ack messages, our Queue is sent on a DestinationName
   $args->{topic} = delete $args->{queue};

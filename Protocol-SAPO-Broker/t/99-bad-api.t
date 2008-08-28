@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 13;
+use Test::More tests => 19;
 use Test::Exception;
 use Protocol::SAPO::Broker;
 
@@ -62,4 +62,25 @@ TODO: {
             '... unknown parameter, dies properly';
 }
 
+
+# ack() (wrong API, failures)
+diag("Testing ack() API failures");
+throws_ok sub { $sb->ack() },
+          qr/Missing required parameter/,
+          '... no parameters, dies properly';
+throws_ok sub { $sb->ack({}) },
+          qr/Missing required parameter/,
+          '... empty param hashref, dies properly';
+throws_ok sub { $sb->ack({ queue => '' }) },
+          qr/Missing valid parameter 'queue'/,
+          '... empty queue, dies properly';
+throws_ok sub { $sb->ack({ id => '1' }) },
+          qr/Missing required parameter 'queue'/,
+          '... misssing queue, dies properly';
+throws_ok sub { $sb->ack({ queue => 'q1' }) },
+          qr/Missing required parameter 'id'/,
+          '... missing id, dies properly';
+throws_ok sub { $sb->ack({ queue => 'q1', id => '' }) },
+          qr/Missing valid parameter 'id'/,
+          '... empty id, dies properly';
         
