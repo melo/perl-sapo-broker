@@ -127,7 +127,7 @@ sub ack {
 
   return $self->_send_message({
     %$args,
-    mesg      => 'Ack',
+    mesg => 'Acknowledge',
   });
 }
 

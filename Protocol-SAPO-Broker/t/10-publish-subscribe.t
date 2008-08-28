@@ -329,7 +329,7 @@ lives_ok { $cb2_notif->ack() } 'Sending ack over correct connection';
 ok($msg_s, 'Sent over proper connection');
 ok(!defined($msg), '... and the other is clean');
 ok(
-  $msg_s =~ m{<b:Ack\s},
+  $msg_s =~ m{<b:Acknowledge\s},
   'It is an Ack message',
 );
 ok(
@@ -347,7 +347,7 @@ lives_ok { $cb2_notif->ack($sb) } 'Sending ack over alternate connection';
 ok($msg, 'Sent over proper connection');
 ok(!defined($msg_s), '... and the other is clean');
 ok(
-  $msg =~ m{<b:Ack\s},
+  $msg =~ m{<b:Acknowledge\s},
   'it is an Ack message',
 );
 ok(
