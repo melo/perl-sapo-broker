@@ -142,6 +142,26 @@ sub ack {
   });
 }
 
+sub enqueue {
+  my $self = shift;
+  
+  my $args = _parse_common_args(@_);
+  
+  croak("Missing required parameter 'queue', ")
+    unless exists $args->{queue};
+  croak("Missing valid parameter 'queue', ")
+    unless $args->{queue};
+  croak("Missing required parameter 'payload', ")
+    unless exists $args->{payload};
+
+  return $self->_send_message({
+    %$args,
+    mesg      => 'Enqueue',
+    dest_name => $args->{queue},
+    wrapper   => 'BrokerMessage',
+  });
+}
+
 sub _parse_common_args {
   my ($args) = @_;
   my %clean;

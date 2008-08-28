@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 19;
+use Test::More 'no_plan';
 use Test::Exception;
 use Protocol::SAPO::Broker;
 
@@ -83,4 +83,23 @@ throws_ok sub { $sb->ack({ queue => 'q1' }) },
 throws_ok sub { $sb->ack({ queue => 'q1', id => '' }) },
           qr/Missing valid parameter 'id'/,
           '... empty id, dies properly';
-        
+
+
+# enqueue() (wrong API, failures)
+diag("Testing enqueue() API failures");
+throws_ok sub { $sb->enqueue() },
+          qr/Missing required parameter/,
+          '... no parameters, dies properly';
+throws_ok sub { $sb->enqueue({}) },
+          qr/Missing required parameter/,
+          '... empty param hashref, dies properly';
+throws_ok sub { $sb->enqueue({ queue => '' }) },
+          qr/Missing valid parameter 'queue'/,
+          '... empty queue, dies properly';
+throws_ok sub { $sb->enqueue({ payload => '' }) },
+          qr/Missing required parameter 'queue'/,
+          '... missing queue, dies properly';
+throws_ok sub { $sb->enqueue({ queue => '/test' }) },
+          qr/Missing required parameter 'payload'/,
+          '... missing payload, dies properly';
+
