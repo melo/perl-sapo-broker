@@ -88,3 +88,21 @@ like(
   'Proper Enqueue message generated with action-id via on_error',
 );
 
+
+# Basic poll
+lives_ok {
+  $sb->poll({
+    queue   => 'queue1',
+  });
+} 'Poll operation successful';
+
+like(
+  $outgoing_msg,
+  qr/<s:Body><b:Poll .+?>/,
+  'Proper Poll message generated',
+);
+like(
+  $outgoing_msg,
+  qr{<b:DestinationName>queue1</b:DestinationName>},
+  '... with a proper DestinatioName',
+);

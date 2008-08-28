@@ -103,3 +103,15 @@ throws_ok sub { $sb->enqueue({ queue => '/test' }) },
           qr/Missing required parameter 'payload'/,
           '... missing payload, dies properly';
 
+
+# poll() (wrong API, failures)
+diag("Testing poll() API failures");
+throws_ok sub { $sb->poll() },
+          qr/Missing required parameter/,
+          '... no parameters, dies properly';
+throws_ok sub { $sb->poll({}) },
+          qr/Missing required parameter/,
+          '... empty param hashref, dies properly';
+throws_ok sub { $sb->poll({ queue => '' }) },
+          qr/Missing valid parameter 'queue'/,
+          '... empty queue, dies properly';

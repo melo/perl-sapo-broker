@@ -162,6 +162,23 @@ sub enqueue {
   });
 }
 
+sub poll {
+  my $self = shift;
+  
+  my $args = _parse_common_args(@_);
+  
+  croak("Missing required parameter 'queue', ")
+    unless exists $args->{queue};
+  croak("Missing valid parameter 'queue', ")
+    unless $args->{queue};
+
+  return $self->_send_message({
+    %$args,
+    mesg      => 'Poll',
+    dest_name => $args->{queue},
+  });
+}
+
 sub _parse_common_args {
   my ($args) = @_;
   my %clean;
