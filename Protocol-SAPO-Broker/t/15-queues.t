@@ -115,9 +115,13 @@ like(
 
 
 # Basic poll
+ok(!exists $sb->{subs}{queue1}, 'No on_message hooks for queue1');
+
+my $on_message_hook = sub {};
 lives_ok {
   $sb->poll({
-    queue   => 'queue1',
+    queue      => 'queue1',
+    on_message => $on_message_hook,
   });
 } 'Poll operation successful';
 
@@ -131,7 +135,15 @@ like(
   qr{<b:DestinationName>queue1</b:DestinationName>},
   '... with a proper DestinatioName',
 );
-
+my $have_subs = exists $sb->{subs}{queue1};
+ok($have_subs, 'Now we have on_message hooks for queue1');
+SKIP: {
+  skip 'Ooops, no subs, lets skip these next few tests', 2 unless $have_subs;
+  
+  my $subs = $sb->{subs}{queue1};
+  is(scalar(@$subs), 1,             '... with a consistent number of hooks');
+  is($subs->[-1], $on_message_hook, '... and our own hook is there');
+};
 
 # Poll to a TOPIC_AS_QUEUE :)
 lives_ok {

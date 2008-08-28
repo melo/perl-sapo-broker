@@ -78,7 +78,7 @@ sub disconnect {
 sub publish {
   my $self = shift;
   
-  my $args = _parse_common_args(@_);
+  my $args = $self->_parse_common_args(@_);
   
   croak("Missing required parameter 'topic', ")
     unless $args->{topic};
@@ -94,16 +94,10 @@ sub publish {
 
 sub subscribe {
   my $self = shift;
-  my $args = _parse_common_args(@_);
+  my $args = $self->_parse_common_args(@_);
   
   croak("Missing required parameter 'topic', ")
     unless $args->{topic};
-
-  my $dest_name = $args->{dest_name};
-  if (my $cb = delete $args->{on_message}) {
-    my $subs = $self->{subs}{$dest_name} ||= [];
-    push @$subs, $cb;
-  }
 
   return $self->_send_message({
     %$args,
@@ -114,7 +108,7 @@ sub subscribe {
 sub ack {
   my $self = shift;
   
-  my $args = _parse_common_args(@_);
+  my $args = $self->_parse_common_args(@_);
   
   croak("Missing required parameter 'queue', ")
     unless exists $args->{queue};
@@ -134,7 +128,7 @@ sub ack {
 sub enqueue {
   my $self = shift;
   
-  my $args = _parse_common_args(@_);
+  my $args = $self->_parse_common_args(@_);
   
   croak("Missing required parameter 'queue', ")
     unless exists $args->{queue};
@@ -154,7 +148,7 @@ sub enqueue {
 sub poll {
   my $self = shift;
   
-  my $args = _parse_common_args(@_);
+  my $args = $self->_parse_common_args(@_);
   
   croak("Missing required parameter 'queue', ")
     unless exists $args->{queue};
@@ -169,7 +163,7 @@ sub poll {
 }
 
 sub _parse_common_args {
-  my ($args) = @_;
+  my ($self, $args) = @_;
   my %clean;
   
   foreach my $f (qw( topic payload ack as_queue id queue
@@ -210,6 +204,15 @@ sub _parse_common_args {
   }
   elsif (exists $clean{queue}) {
     $clean{dest_name} = $clean{queue};
+  }
+
+  # Activate on_message hooks
+  if (exists $clean{dest_name}) {
+    my $dest_name = $clean{dest_name};
+    if (my $cb = delete $clean{on_message}) {
+      my $subs = $self->{subs}{$dest_name} ||= [];
+      push @$subs, $cb;
+    }
   }
 
   # If present the message ID is also used as a default ack_id
