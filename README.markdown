@@ -43,6 +43,7 @@ TODO
 Protocol::SAPO::Broker
 ----------------------
 
+ * Add unsusbcribe()
  * Add check_status()
  * Add auto_reconnect
  * Document public API
