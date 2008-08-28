@@ -7,8 +7,29 @@ use Test::Exception;
 use Protocol::SAPO::Broker;
 
 my $sb = Protocol::SAPO::Broker->new({
-  on_connect => sub { $_[0]->connected },
+  auto_connect => 0,
+  on_connect   => sub { $_[0]->connected },
 });
+
+# Catch API usage while not connected
+throws_ok sub { $sb->publish() },
+          qr/API 'publish' cannot be called while not connected, /,
+          'Not connected, publish dies';
+throws_ok sub { $sb->subscribe() },
+          qr/API 'subscribe' cannot be called while not connected, /,
+          'Not connected, subscribe dies';
+throws_ok sub { $sb->enqueue() },
+          qr/API 'enqueue' cannot be called while not connected, /,
+          'Not connected, enqueue dies';
+throws_ok sub { $sb->poll() },
+          qr/API 'poll' cannot be called while not connected, /,
+          'Not connected, poll dies';
+throws_ok sub { $sb->ack() },
+          qr/API 'ack' cannot be called while not connected, /,
+          'Not connected, ack dies';
+
+
+$sb->connect;
 
 # publish() (wrong API, failures)
 diag("Testing publish() API failures");

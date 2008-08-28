@@ -184,6 +184,12 @@ sub _parse_common_args {
   my ($self, $args) = @_;
   my %clean;
   
+  if ($self->state ne 'connected') {
+    my $method = (caller(1))[3];
+    $method =~ s/^.+:://;
+    croak("API '$method' cannot be called while not connected, ");
+  }
+  
   foreach my $f (qw( topic payload ack as_queue id queue
                      on_message on_success on_error ack_id )) {
     $clean{$f} = $args->{$f} if exists $args->{$f};
