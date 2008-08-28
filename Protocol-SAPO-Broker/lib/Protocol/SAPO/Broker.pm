@@ -29,7 +29,8 @@ sub init {
   my $port = $args->{port} || 3322;
   
   # Auto-connect flags
-  my $auto_conn = exists $args->{auto_connect}? $args->{auto_connect} : 1;
+  my $auto_conn   = exists $args->{auto_connect}?   $args->{auto_connect}   : 1;
+  my $auto_reconn = exists $args->{auto_reconnect}? $args->{auto_reconnect} : 1;
   
   # extract callbacks
   my %cbs;
@@ -39,11 +40,12 @@ sub init {
   }
   
   # Init protocol state machine
-  $self->{state}     = 'idle';
-  $self->{host}      = $host;
-  $self->{port}      = $port;
-  $self->{auto_conn} = $auto_conn;
-  $self->{cb}        = \%cbs;
+  $self->{state}       = 'idle';
+  $self->{host}        = $host;
+  $self->{port}        = $port;
+  $self->{auto_conn}   = $auto_conn;
+  $self->{auto_reconn} = $auto_reconn;
+  $self->{cb}          = \%cbs;
 
   # Do auto-connect if asked for
   $self->connect() if $auto_conn;
@@ -72,7 +74,23 @@ sub disconnect {
   }
   $self->_set_state('idle');
   
+  $self->reconnect;
+  
   return;
+}
+
+sub reconnect {
+  my ($self) = @_;
+  
+  return unless $self->{auto_reconn};
+  
+  my $state = $self->state;
+  croak("State is not 'idle', cannot call 'reconnect()' (state is '$state')")
+    if $state ne 'idle';
+  
+  $self->_optional_callback('reconnect', $self->{host}, $self->{port});
+  
+  return $self->connect;
 }
 
 sub publish {
@@ -424,6 +442,8 @@ sub connect_failed {
   $self->_optional_callback('connect_error', $error);
   
   $self->_set_state('idle');
+  
+  $self->reconnect;
   
   return;
 }
