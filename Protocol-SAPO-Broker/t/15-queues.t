@@ -19,6 +19,7 @@ my $sb = Protocol::SAPO::Broker->new({
 ok($sb, 'Valid Protocol::SAPO::Broker');
 is($sb->state, 'connected', '... proper initial state');
 
+
 # Basic enqueue
 lives_ok {
   $sb->enqueue({
@@ -43,6 +44,23 @@ like(
   '... and the expected TextPayload',
 );
 
+
+# Enqueue to a TOPIC_AS_QUEUE :)
+lives_ok {
+  $sb->enqueue({
+    topic    => 'topic1',
+    as_queue => 'queue2',
+    payload  => $$,
+  });
+} 'Queue operation successful';
+
+like(
+  $outgoing_msg,
+  qr{<b:DestinationName>queue2\@topic1</b:DestinationName>},
+  '... with a proper DestinatioName',
+);
+
+
 # ask for Ack
 lives_ok {
   $sb->enqueue({
@@ -58,6 +76,7 @@ like(
   'Proper Enqueue message generated with action-id',
 );
 
+
 # ask for Ack with on_success
 lives_ok {
   $sb->enqueue({
@@ -72,6 +91,7 @@ like(
   qr/<s:Body><b:Enqueue .*?b:action-id=.*?>/,
   'Proper Enqueue message generated with action-id via on_success',
 );
+
 
 # ask for Ack with on_error
 lives_ok {
@@ -104,5 +124,20 @@ like(
 like(
   $outgoing_msg,
   qr{<b:DestinationName>queue1</b:DestinationName>},
+  '... with a proper DestinatioName',
+);
+
+
+# Poll to a TOPIC_AS_QUEUE :)
+lives_ok {
+  $sb->poll({
+    topic    => 'topic1',
+    as_queue => 'queue2',
+  });
+} 'Queue operation successful';
+
+like(
+  $outgoing_msg,
+  qr{<b:DestinationName>queue2\@topic1</b:DestinationName>},
   '... with a proper DestinatioName',
 );

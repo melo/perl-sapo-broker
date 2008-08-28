@@ -88,7 +88,6 @@ sub publish {
   return $self->_send_message({
     %$args,
     mesg      => 'Publish',
-    dest_name => $args->{topic},
     wrapper   => 'BrokerMessage',
   });
 }
@@ -100,14 +99,7 @@ sub subscribe {
   croak("Missing required parameter 'topic', ")
     unless $args->{topic};
 
-  my $dest_name = delete $args->{topic};
-  my $dest_type = 'TOPIC';
-  
-  if (my $queue_name = delete $args->{as_queue}) {
-    $dest_name = "$queue_name\@$dest_name";
-    $dest_type = 'TOPIC_AS_QUEUE';
-  }
-  
+  my $dest_name = $args->{dest_name};
   if (my $cb = delete $args->{on_message}) {
     my $subs = $self->{subs}{$dest_name} ||= [];
     push @$subs, $cb;
@@ -116,8 +108,6 @@ sub subscribe {
   return $self->_send_message({
     %$args,
     mesg      => 'Notify',
-    dest_name => $dest_name,
-    dest_type => $dest_type,
   });
 }
 
@@ -138,7 +128,6 @@ sub ack {
   return $self->_send_message({
     %$args,
     mesg      => 'Ack',
-    dest_name => $args->{queue},
   });
 }
 
@@ -157,7 +146,6 @@ sub enqueue {
   return $self->_send_message({
     %$args,
     mesg      => 'Enqueue',
-    dest_name => $args->{queue},
     wrapper   => 'BrokerMessage',
   });
 }
@@ -175,7 +163,6 @@ sub poll {
   return $self->_send_message({
     %$args,
     mesg      => 'Poll',
-    dest_name => $args->{queue},
   });
 }
 
@@ -201,6 +188,27 @@ sub _parse_common_args {
   # Check for valid queue ID
   croak("Missing valid parameter 'as_queue', ")
     if exists $clean{as_queue} && !$clean{as_queue};
+
+  # Decide on which DestinationName to use
+  if (exists $clean{topic}) {
+    my $dest_name = $clean{topic};
+    my $dest_type = 'TOPIC';
+
+    if (my $queue_name = delete $args->{as_queue}) {
+      $dest_name = "$queue_name\@$dest_name";
+      $dest_type = 'TOPIC_AS_QUEUE';
+      # if TOPIC_AS_QUEUE, we are really a queue
+      # Allows for Queue operations to also work with
+      # TOPIC_AS_QUEUE queues
+      $clean{queue} = $dest_name;
+    }
+    
+    $clean{dest_type} = $dest_type;
+    $clean{dest_name} = $dest_name;
+  }
+  elsif (exists $clean{queue}) {
+    $clean{dest_name} = $clean{queue};
+  }
 
   # If present the message ID is also used as a default ack_id
   # It will only be used if ack's where requested!
@@ -245,8 +253,9 @@ sub _send_message {
   $soap_msg .= qq{<b:MessageId>$id</b:MessageId>} if $id;
   
   # Order of the nodes is important! Specified as a SEQUENCE-OF in the WSDL
-  # Deal with destination name (mandatory) and type (optional)
-  $soap_msg .= qq{<b:DestinationName>$args->{dest_name}</b:DestinationName>};
+  # Deal with destination name and type
+  $soap_msg .= qq{<b:DestinationName>$args->{dest_name}</b:DestinationName>}
+    if $args->{dest_name};
   $soap_msg .= qq{<b:DestinationType>$args->{dest_type}</b:DestinationType>}
     if $args->{dest_type};
 

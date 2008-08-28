@@ -99,6 +99,9 @@ throws_ok sub { $sb->enqueue({ queue => '' }) },
 throws_ok sub { $sb->enqueue({ payload => '' }) },
           qr/Missing required parameter 'queue'/,
           '... missing queue, dies properly';
+throws_ok sub { $sb->enqueue({ topic => '/test' }) },
+          qr/Missing required parameter 'queue'/,
+          '... missing queue, add as_queue to fix, dies properly';
 throws_ok sub { $sb->enqueue({ queue => '/test' }) },
           qr/Missing required parameter 'payload'/,
           '... missing payload, dies properly';
@@ -115,3 +118,6 @@ throws_ok sub { $sb->poll({}) },
 throws_ok sub { $sb->poll({ queue => '' }) },
           qr/Missing valid parameter 'queue'/,
           '... empty queue, dies properly';
+throws_ok sub { $sb->poll({ topic => '/test' }) },
+          qr/Missing required parameter 'queue'/,
+          '... missing queue, add as_queue to fix, dies properly';
