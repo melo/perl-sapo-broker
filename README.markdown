@@ -16,6 +16,9 @@ Status
 The code works, and most operations are implemented. The API is still in flux,
 so I'm labelling the current version as alpha.
 
+We have a proper test suite, and code coverage reports indicate above 95%
+coverage.
+
 
 Roadmap
 =======
