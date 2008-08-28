@@ -59,6 +59,11 @@ like(
   qr{<b:DestinationName>queue2\@topic1</b:DestinationName>},
   '... with a proper DestinatioName',
 );
+unlike(
+  $outgoing_msg,
+  qr{<b:DestinationType>},
+  '... but without a DestinationType',
+);
 
 
 # ask for Ack
@@ -140,4 +145,9 @@ like(
   $outgoing_msg,
   qr{<b:DestinationName>queue2\@topic1</b:DestinationName>},
   '... with a proper DestinatioName',
+);
+unlike(
+  $outgoing_msg,
+  qr{<b:DestinationType>},
+  '... but without a DestinationType',
 );

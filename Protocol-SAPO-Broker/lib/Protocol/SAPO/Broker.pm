@@ -143,6 +143,7 @@ sub enqueue {
   croak("Missing required parameter 'payload', ")
     unless exists $args->{payload};
 
+  delete $args->{dest_type};
   return $self->_send_message({
     %$args,
     mesg      => 'Enqueue',
@@ -160,6 +161,7 @@ sub poll {
   croak("Missing valid parameter 'queue', ")
     unless $args->{queue};
 
+  delete $args->{dest_type};
   return $self->_send_message({
     %$args,
     mesg      => 'Poll',
