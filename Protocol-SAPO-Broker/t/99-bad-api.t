@@ -6,30 +6,61 @@ use Test::More 'no_plan';
 use Test::Exception;
 use Protocol::SAPO::Broker;
 
+# new() (wrong API, failures)
+throws_ok sub { Protocol::SAPO::Broker->new },
+          qr/Missing callback 'on_connect', /,
+          'Missing required parameters (connect callback)';
+throws_ok sub { Protocol::SAPO::Broker->new({ on_connect => '' }) },
+          qr/Invalid callback 'on_connect', /,
+          'Missing required parameters (on_connect callback)';
+throws_ok sub { Protocol::SAPO::Broker->new({ on_connect => sub {} }) },
+          qr/Missing callback 'on_send', /,
+          'Missing required parameters (on_send callback)';
+throws_ok sub {
+            Protocol::SAPO::Broker->new({
+              on_connect => sub {},
+              on_send => ''
+            })
+          },
+          qr/Invalid callback 'on_send', /,
+          'Missing required parameters (on_send callback)';
+
+
 my $sb = Protocol::SAPO::Broker->new({
   auto_connect => 0,
   on_connect   => sub { $_[0]->connected },
+  on_send      => sub {},
 });
+
 
 # Catch API usage while not connected
 throws_ok sub { $sb->publish() },
-          qr/API 'publish' cannot be called while not connected, /,
-          'Not connected, publish dies';
+          qr/Cannot call 'publish\(\)': state is 'idle', requires 'connected', /,
+          'Not connected, publish() dies';
 throws_ok sub { $sb->subscribe() },
-          qr/API 'subscribe' cannot be called while not connected, /,
-          'Not connected, subscribe dies';
+          qr/Cannot call 'subscribe\(\)': state is 'idle', requires 'connected', /,
+          'Not connected, subscribe() dies';
 throws_ok sub { $sb->enqueue() },
-          qr/API 'enqueue' cannot be called while not connected, /,
-          'Not connected, enqueue dies';
+          qr/Cannot call 'enqueue\(\)': state is 'idle', requires 'connected', /,
+          'Not connected, enqueue() dies';
 throws_ok sub { $sb->poll() },
-          qr/API 'poll' cannot be called while not connected, /,
-          'Not connected, poll dies';
+          qr/Cannot call 'poll\(\)': state is 'idle', requires 'connected', /,
+          'Not connected, poll() dies';
 throws_ok sub { $sb->ack() },
-          qr/API 'ack' cannot be called while not connected, /,
-          'Not connected, ack dies';
+          qr/Cannot call 'ack\(\)': state is 'idle', requires 'connected', /,
+          'Not connected, ack() dies';
+
+throws_ok sub { $sb->disconnect() },
+          qr/Cannot call 'disconnect\(\)': state is 'idle', requires 'connected', /,
+          'Not connected, disconnect() dies';
+
 
 
 $sb->connect;
+
+throws_ok sub { $sb->connect() },
+          qr/Cannot call 'connect\(\)': state is 'connected', requires 'idle', /,
+          'Already connected, connect() again dies';
 
 # publish() (wrong API, failures)
 diag("Testing publish() API failures");

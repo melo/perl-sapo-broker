@@ -4,10 +4,7 @@ use strict;
 use warnings;
 use Test::More 'no_plan';
 use Test::Exception;
-
-BEGIN {
-	use_ok( 'Protocol::SAPO::Broker' );
-}
+use Protocol::SAPO::Broker;
 
 diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
 
@@ -16,21 +13,15 @@ my $i_msg;
 my $sb = Protocol::SAPO::Broker->new({
   host => '127.0.0.2',
   port => '2233',
-  on_connect => sub {
-    my ($lsb) = @_;
-    return $lsb->connected($$ % 13);
-  },
-  on_trace_incoming => sub {
-    (undef, $i_msg) = @_;
-    $i_count++;
-    return;
-  },
+  on_connect        => sub { $_[0]->connected($$ % 13)  },
+  on_send           => sub {},
+  on_trace_incoming => sub { $i_msg = $_[1]; $i_count++ },
 });
 ok($sb, 'Created a Protocol::SAPO::Broker instance with some paremeters');
 is($sb->host,  '127.0.0.2',   '... with correct given host');
 is($sb->port,  '2233',        '... with correct given port');
 is($sb->state, 'connected',   '... proper initial state');
-is($sb->info, $$ % 13,       '... proper connection info');
+is($sb->info,  $$ % 13,       '... proper connection info');
 
 my $test_msg = <<EOM;
   <soap:Envelope
@@ -60,17 +51,17 @@ my $test_msg = <<EOM;
 EOM
 
 # Check init state
-is($sb->expect, 0,  'Protocol is expecting a frame');
-is($sb->buffer, '', '... and the internal protocol is empty');
+is($sb->{expect}, 0,  'Protocol is expecting a frame');
+is($sb->{buffer}, '', '... and the internal protocol is empty');
 
 # Basic test, full frame
 my $r = $sb->incoming_data(_build_frame($test_msg));
 ok(!defined($r), 'Protocol received network data ok');
 is($test_msg, $i_msg, '... incoming message is correct');
-is($i_count, 1, '... and it was a single message');
+is($i_count, 1,       '... and it was a single message');
 
-is($sb->expect, 0,  'Again, protocol is expecting a frame');
-is($sb->buffer, '', '... and the internal protocol is empty');
+is($sb->{expect}, 0,  'Again, protocol is expecting a frame');
+is($sb->{buffer}, '', '... and the internal protocol is empty');
 
 # Slice frame in 4, spoon feed
 $i_msg = undef;
@@ -86,7 +77,7 @@ foreach my $slice (1..3) {
   $r = $sb->incoming_data(substr($frame, 0, 1, ''));
   ok(!defined($r),     '... received correctly slice $slice');
   ok(!defined($i_msg), '... still no current incoming message');
-  is($sb->expect, 0,   '... still expecting length header');
+  is($sb->{expect}, 0, '... still expecting length header');
   is($i_count, 0,      '... incoming message count still 0');
 }
 
@@ -94,7 +85,7 @@ foreach my $slice (1..3) {
 # but with a message delivered
 $r = $sb->incoming_data(substr($frame, 0, $sfl, ''));
 ok(!defined($r),      '... received correctly slice 4, frame length');
-is($sb->expect, 0,    '... expecting header again');
+is($sb->{expect}, 0,  '... expecting header again');
 is($i_count, 1,       'Got one messages through');
 ok(defined($i_msg),   '... last incoming message is defined');
 is($i_msg, $test_msg, '... and correct');
@@ -103,10 +94,10 @@ is($i_msg, $test_msg, '... and correct');
 # send rest minus 1 - this will flush three full frames and keep the
 # fourth pending
 $r = $sb->incoming_data(substr($frame, 0, length($frame)-1, ''));
-ok(!defined($r),   '... received correctly slice 5');
-is($sb->expect, 1, '... just 1 byte left');
+ok(!defined($r),     '... received correctly slice 5');
+is($sb->{expect}, 1, '... just 1 byte left');
 is(
-  $sb->buffer,
+  $sb->{buffer},
   substr($test_msg, 0, length($test_msg)-1),
   '... buffer looks good'
 );
@@ -123,8 +114,8 @@ ok(defined($i_msg),   '... incoming message detected');
 is($i_msg, $test_msg, '... and it is correct');
 is($i_count, 4,       '... and incoming counter is also correct at 4');
 
-is($sb->expect, 0,  'Again, protocol is expecting a frame');
-is($sb->buffer, '', '... and the internal protocol buffer is empty');
+is($sb->{expect}, 0,  'Again, protocol is expecting a frame');
+is($sb->{buffer}, '', '... and the internal protocol buffer is empty');
 
 
 # Test disconnected incoming data
@@ -134,8 +125,8 @@ ok(!defined($r), 'Disconnected successfully');
 is($sb->state, 'idle', '... state is consistent');
 
 throws_ok sub { $sb->incoming_data('more!') },
-          qr!Cannot give me incoming data when state is not!,
-          'Incomind data on a disconnected Protocol is bad karma';
+          qr{Cannot call 'incoming_data\(\)': state is 'idle', requires 'connected'},
+          'Incoming data on a disconnected Protocol is bad karma';
 
 
 

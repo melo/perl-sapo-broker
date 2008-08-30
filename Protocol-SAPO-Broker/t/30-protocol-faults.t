@@ -5,14 +5,11 @@ use warnings;
 use Test::More 'no_plan';
 use Test::Exception;
 use Errno qw( EPROTONOSUPPORT );
-
-BEGIN {
-	use_ok( 'Protocol::SAPO::Broker' );
-}
+use Protocol::SAPO::Broker;
 
 diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
 
-my ($fault_info, $xdoc, $in_msg, $in_wtf, $in_pay, $error, $node, $in_unk_msg);
+my ($fault_info, $xdoc, $in_msg, $in_wtf, $in_pay, $error, $node, $node_name, $in_unk_msg);
 my $sb = Protocol::SAPO::Broker->new({
   host => '127.0.0.2',
   port => '2233',
@@ -20,6 +17,7 @@ my $sb = Protocol::SAPO::Broker->new({
     my ($lsb) = @_;
     return $lsb->connected($$ % 13);
   },
+  on_send => sub {},
   on_trace_incoming => sub {
     (undef, $in_msg) = @_;
     return;
@@ -37,7 +35,7 @@ my $sb = Protocol::SAPO::Broker->new({
     return;
   },
   on_unknown_message => sub {
-    (undef, $node, $in_unk_msg) = @_;
+    (undef, $node_name, $in_unk_msg, $node) = @_;
     return;
   },
 });
@@ -106,9 +104,11 @@ EOM
 
 $r = $sb->incoming_data(_build_frame($bad_message));
 ok(!defined($r), 'We got a frame successfully for an unkown protocol');
-is($in_msg, $bad_message,              '... the payload is correct');
-ok(ref($node),                         '... and it has a valid element object');
-is(ref($node), 'XML::LibXML::Element', '... with the proper class');
+is($in_msg, $bad_message,               '... the payload is correct');
+is($in_unk_msg, $bad_message,           '... on on_unknown_message cb also');
+is($node_name, 'NotAValidMessage',      '... proper node_name');
+ok(ref($node),                          '... and it has a valid doc object');
+is(ref($node), 'XML::LibXML::XPathContext', '... with the proper class');
 
 ok($in_unk_msg, 'We got a unkonwn message');
 is($in_unk_msg, $in_msg,      '... and it was the correct payload');

@@ -36,7 +36,13 @@ sub init {
   my %cbs;
   while (my ($k, $v) = each %$args) {
     next unless $k =~ m/^on_(.+)/;
+    croak("Invalid callback '$k', must be CODE ref, ")
+      unless ref($v) eq 'CODE';
     $cbs{$1} = $v;
+  }
+  foreach my $rcb (qw( connect send )) {
+    croak("Missing callback 'on_$rcb', ")
+      unless exists $cbs{$rcb};
   }
   
   # Init protocol state machine
@@ -59,38 +65,21 @@ sub init {
 sub connect {
   my ($self) = @_;
 
-  $self->_set_state('connecting');  
-  return $self->_callback('connect', $self->{host}, $self->{port});
+  $self->_require_state('idle');
+  $self->_set_state('connecting');
+  $self->_connect;
+  
+  return;
 }
 
 sub disconnect {
   my ($self) = @_;
 
-  $self->_set_state('disconnecting');  
-  $self->_optional_callback('disconnect', $self->{info});
+  $self->_require_state('connected');
+  $self->_set_state('disconnecting');
+  $self->_disconnect;
 
-  foreach my $field (qw( info expect buffer frame_length )) {
-    delete $self->{$field};
-  }
-  $self->_set_state('idle');
-  
-  $self->reconnect;
-  
   return;
-}
-
-sub reconnect {
-  my ($self) = @_;
-  
-  return unless $self->{auto_reconn};
-  
-  my $state = $self->state;
-  croak("State is not 'idle', cannot call 'reconnect()' (state is '$state')")
-    if $state ne 'idle';
-  
-  $self->_optional_callback('reconnect', $self->{host}, $self->{port});
-  
-  return $self->connect;
 }
 
 sub publish {
@@ -112,6 +101,7 @@ sub publish {
 
 sub subscribe {
   my $self = shift;
+  
   my $args = $self->_parse_common_args(@_);
   
   croak("Missing required parameter 'topic', ")
@@ -183,12 +173,8 @@ sub poll {
 sub _parse_common_args {
   my ($self, $args) = @_;
   my %clean;
-  
-  if ($self->state ne 'connected') {
-    my $method = (caller(1))[3];
-    $method =~ s/^.+:://;
-    croak("API '$method' cannot be called while not connected, ");
-  }
+
+  $self->_require_state('connected');  
   
   foreach my $f (qw( topic payload ack as_queue id queue
                      on_message on_success on_error ack_id )) {
@@ -308,7 +294,8 @@ sub _send_message {
   # wire-level frame: lenght prefix + payload
   substr( $soap_msg, 0, 0 ) = pack( 'N', length($soap_msg) );
   
-  return $self->_callback('send', $self->{info}, $soap_msg);
+  $self->_callback('send', $self->{info}, $soap_msg);
+  return;
 }
 
 sub _receive_message {
@@ -321,7 +308,8 @@ sub _receive_message {
   my $xdoc = eval { _parse_xml($payload) };
   if (my $e = $@) {
     $self->_set_error(EPROTONOSUPPORT);    
-    return $self->_optional_callback('payload_error', $payload, $e);
+    $self->_optional_callback('payload_error', $payload, $e);
+    return;
   }
 
   # Register most important namespaces
@@ -337,8 +325,9 @@ sub _receive_message {
   my ($fault) = $xdoc->findnodes('//mysoap:Fault');
   return $self->_process_fault($fault, $xdoc) if $fault;
   
-  # WTF is this?
-  return $self->_optional_callback('unknown_payload', $payload, $xdoc);
+  # Unrecognized payload
+  $self->_optional_callback('unknown_payload', $payload, $xdoc);
+  return;
 }
 
 sub _process_message {
@@ -350,7 +339,8 @@ sub _process_message {
   return $self->_process_accepted($mesg, $xdoc)
     if $node_name eq 'Accepted';
   
-  return $self->_optional_callback('unknown_message', $mesg, $payload);
+  $self->_optional_callback('unknown_message', $node_name, $payload, $xdoc);
+  return;
 }
 
 sub _process_notification {
@@ -375,8 +365,10 @@ sub _process_notification {
     message => $xdoc,
   });
 
-  return $self->_optional_callback('unmatched_message', $payload, $destination, $mesg, $xdoc)
-    unless exists $self->{subs}{$to};
+  if (! exists $self->{subs}{$to}) {
+    $self->_optional_callback('unmatched_message', $to, $destination, $payload, $xdoc);
+    return;
+  }
     
   my $subs = $self->{subs}{$to};
   foreach my $cb (@$subs) {
@@ -393,7 +385,7 @@ sub _process_accepted {
   my $id = $ack->getAttributeNS('http://services.sapo.pt/broker', 'action-id');
   
   my $cbs = delete $self->{id_callbacks}{$id};
-  $cbs->[0]->($self, $id, $mesg, $xdoc) if $cbs && $cbs->[0];
+  $cbs->[0]->($self, $id, $xdoc) if $cbs && $cbs->[0];
   
   return;
 }
@@ -419,10 +411,58 @@ sub _process_fault {
     
     my $cbs = delete $self->{id_callbacks}{$id};
       
-    $cbs->[1]->($self, $id, $fault, $xdoc) if $cbs && $cbs->[1];
+    $cbs->[1]->($self, $id, $xdoc) if $cbs && $cbs->[1];
   }
   
-  return $self->_optional_callback('fault', \%fault, $xdoc);
+  $self->_optional_callback('fault', \%fault, $xdoc);
+  return;
+}
+
+
+### Connection handling
+
+sub _connect {
+  my $self = shift;
+
+  return $self->_callback('connect', $self->{host}, $self->{port});
+}
+
+sub _disconnect {
+  my ($self) = @_;
+  
+  $self->_optional_callback('disconnect', $self->{info});
+
+  foreach my $field (qw( info expect buffer frame_length id_callbacks subs )) {
+    delete $self->{$field};
+  }
+  
+  $self->_set_state('idle');
+  
+  return;
+}
+
+sub _reconnect {
+  my ($self) = @_;
+  
+  $self->_require_state('idle');
+  return unless $self->{auto_reconn};
+
+  $self->_set_state('reconnecting');  
+  $self->_optional_callback('reconnect', $self->{host}, $self->{port});
+  
+  $self->_connect;
+  
+  return;
+}
+
+sub _lost_connection {
+  my $self = shift;
+  
+  $self->_set_state('connection_lost');  
+  $self->_disconnect;
+  $self->_reconnect;
+  
+  return;
 }
 
 
@@ -431,25 +471,24 @@ sub _process_fault {
 sub connected {
   my ($self, $info) = @_;
   
-  $self->_set_state('connected');
-  $self->_set_error(undef);
+  $self->_require_state('connecting');
+  $self->_clear_error;
   $self->{info} = $info;
   $self->{buffer} = '';
   $self->{expect} = 0; # N=0 - expects new frame, N > 0 expects N bytes of frame
+  $self->_set_state('connected');
   
-  return $self->_optional_callback('connected', $info);
+  return;
 }
 
 sub connect_failed {
   my ($self, $error) = @_;
   
+  $self->_require_state('connecting');
   $self->_set_error($error);
   $self->_set_state('connect_error');
-  $self->_optional_callback('connect_error', $error);
-  
   $self->_set_state('idle');
-  
-  $self->reconnect;
+  $self->_reconnect;
   
   return;
 }
@@ -457,18 +496,14 @@ sub connect_failed {
 sub incoming_data {
   my ($self, $data) = @_;
 
-  # Clear previous error
-  $self->_set_error(undef);
+  $self->_require_state('connected');
+  $self->_clear_error;
   
-  # Deal with EOF
   if (!defined($data)) { # EOF
-    $self->_optional_callback('eof', $self);
-    $self->disconnect;
+    $self->_set_state('eof');
+    $self->_lost_connection;
     return;
   }
-  
-  croak("Cannot give me incoming data when state is not 'connected', ")
-    unless $self->{state} eq 'connected';
   
   my $buf = $self->{buffer} .= $data;
   my $exp = $self->{expect};
@@ -504,23 +539,23 @@ sub incoming_data {
 sub write_error {
   my ($self, $error) = @_;
 
+  $self->_require_state('connected');
   $self->_set_error($error);
   $self->_set_state('write_error');
+  $self->_lost_connection;
   
-  $self->_optional_callback('write_error', $error);
-
-  return $self->disconnect;
+  croak("Write error: $!");
 }
 
 sub read_error {
   my ($self, $error) = @_;
 
+  $self->_require_state('connected');
   $self->_set_error($error);
   $self->_set_state('read_error');
+  $self->_lost_connection;
   
-  $self->_optional_callback('read_error', $error);
-
-  return $self->disconnect;
+  croak("Read error: $!");
 }
 
 
@@ -533,14 +568,35 @@ sub _set_state {
   $self->_optional_callback("state_$new_state");
 }
 
+sub _require_state {
+  my ($self, $req_state) = @_;
+
+  my $cur_state = $self->state;
+  return if $cur_state eq $req_state;
+  
+  my $method;
+  my $frame = 0;
+  do {
+    $method = (caller(++$frame))[3];
+    $method =~ s/^.+:://;
+  } while ($method =~ m/^_/);
+  
+  croak("Cannot call '$method()': state is '$cur_state', requires '$req_state', ");
+}
+
 
 ### Error handling
 
 sub _set_error {
   my ($self, $err) = @_;
   
-  return delete($self->{error}) unless defined $err;
-  return $self->{error} = $! = $err;
+  return $! = $self->{error} = $err;
+}
+
+sub _clear_error {
+  my $self = shift;
+  
+  delete $self->{error};
 }
 
 
@@ -550,19 +606,18 @@ sub _callback {
   my ($self, $tag, @args) = @_;
   
   croak("Missing callback '$tag', ") unless $self->{cb}{$tag};
-
-  return $self->_optional_callback($tag, @args);
+  $self->_optional_callback($tag, @args);
+  return;
 }
 
 sub _optional_callback {
   my ($self, $tag, @args) = @_;
   
+  return unless exists $self->{cb}{$tag};
   my $cb = $self->{cb}{$tag};
-  return unless $cb;
 
   $cb->($self, @args);
-  
-  return $self->{error};
+  return;
 }
 
 
@@ -573,9 +628,6 @@ sub host   { return $_[0]{host}  }
 sub port   { return $_[0]{port}  }
 sub info   { return $_[0]{info}  }
 sub error  { return $_[0]{error} }
-sub expect { return $_[0]{expect} }
-sub buffer { return $_[0]{buffer} }
-
 
 
 ### XML utils
@@ -613,6 +665,16 @@ sub _gen_action_id {
   $id_count++;
   my $t = time();
   return "$^T-$t-$$-$id_count";
+}
+
+
+### The cleaner
+
+sub DESTROY {
+  my $self = shift;
+  my $state = $self->state;
+  
+  $self->disconnect if $state && $state eq 'connected';
 }
 
 =head1 NAME
