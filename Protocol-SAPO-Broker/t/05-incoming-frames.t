@@ -2,11 +2,10 @@
 
 use strict;
 use warnings;
-use Test::More 'no_plan';
-use Test::Exception;
+use Test::Most 'no_plan';
 use Protocol::SAPO::Broker;
 
-diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
+explain( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
 
 my $i_count = 0;
 my $i_msg;

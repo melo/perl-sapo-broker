@@ -2,12 +2,11 @@
 
 use strict;
 use warnings;
-use Test::More 'no_plan';
-use Test::Exception;
+use Test::Most 'no_plan';
 use Errno qw( EPROTONOSUPPORT );
 use Protocol::SAPO::Broker;
 
-diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
+explain( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
 
 my ($fault_info, $xdoc, $in_msg, $in_wtf, $in_pay, $error, $node, $node_name, $in_unk_msg);
 my $sb = Protocol::SAPO::Broker->new({

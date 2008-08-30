@@ -1,11 +1,10 @@
 #!perl -T
 
-use Test::More 'no_plan';
-use Test::Exception;
+use Test::Most 'no_plan';
 use Errno qw( ENOTCONN EPIPE ECONNRESET );
 use Protocol::SAPO::Broker;
 
-diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X" );
+explain( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X" );
 
 # Test basic auto_connect and auto_reconnect
 my $sb = Protocol::SAPO::Broker->new({

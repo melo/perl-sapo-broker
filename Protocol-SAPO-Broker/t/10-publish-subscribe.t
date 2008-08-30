@@ -2,12 +2,11 @@
 
 use strict;
 use warnings;
-use Test::More 'no_plan';
-use Test::Exception;
+use Test::Most 'no_plan';
 use Errno qw( ENOTCONN );
 use Protocol::SAPO::Broker;
 
-diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
+explain( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
 
 my $conn = 0;
 my $msg = '';
@@ -163,12 +162,12 @@ my $sb_consumer = Protocol::SAPO::Broker->new({
   },
   on_trace_incoming => sub {
     my (undef, $soap) = @_;
-    diag("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    explain("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
     $i_msg_s = $soap;
   },
   on_trace_outgoing => sub {
     my (undef, $soap) = @_;
-    diag("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    explain("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
 });
 ok($sb_consumer, 'Created a Protocol::SAPO::Broker instance for subscriber');

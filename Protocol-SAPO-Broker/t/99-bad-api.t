@@ -2,8 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More 'no_plan';
-use Test::Exception;
+use Test::Most 'no_plan';
 use Protocol::SAPO::Broker;
 
 # new() (wrong API, failures)
@@ -63,7 +62,7 @@ throws_ok sub { $sb->connect() },
           'Already connected, connect() again dies';
 
 # publish() (wrong API, failures)
-diag("Testing publish() API failures");
+explain("Testing publish() API failures");
 throws_ok sub { $sb->publish() },
           qr/Missing required parameter/,
           '... no parameters, dies properly';
@@ -88,7 +87,7 @@ TODO: {
 
 
 # subscribe() (wrong API, failures)
-diag("Testing subscribe() API failures");
+explain("Testing subscribe() API failures");
 throws_ok sub { $sb->subscribe() },
           qr/Missing required parameter/,
           '... no parameters, dies properly';
@@ -116,7 +115,7 @@ TODO: {
 
 
 # ack() (wrong API, failures)
-diag("Testing ack() API failures");
+explain("Testing ack() API failures");
 throws_ok sub { $sb->ack() },
           qr/Missing required parameter/,
           '... no parameters, dies properly';
@@ -138,7 +137,7 @@ throws_ok sub { $sb->ack({ queue => 'q1', id => '' }) },
 
 
 # enqueue() (wrong API, failures)
-diag("Testing enqueue() API failures");
+explain("Testing enqueue() API failures");
 throws_ok sub { $sb->enqueue() },
           qr/Missing required parameter/,
           '... no parameters, dies properly';
@@ -160,7 +159,7 @@ throws_ok sub { $sb->enqueue({ queue => '/test' }) },
 
 
 # poll() (wrong API, failures)
-diag("Testing poll() API failures");
+explain("Testing poll() API failures");
 throws_ok sub { $sb->poll() },
           qr/Missing required parameter/,
           '... no parameters, dies properly';

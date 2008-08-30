@@ -2,12 +2,12 @@
 
 use strict;
 use warnings;
-use Test::More 'no_plan';
+use Test::Most 'no_plan';
 use Test::Exception;
 use Errno qw( ENOTCONN );
 use Protocol::SAPO::Broker;
 
-diag( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
+explain( "Testing Protocol::SAPO::Broker $Protocol::SAPO::Broker::VERSION, Perl $], $^X, PID $$" );
 
 my ($outgoing_msg, $incoming_msg);
 my $sb = Protocol::SAPO::Broker->new({
