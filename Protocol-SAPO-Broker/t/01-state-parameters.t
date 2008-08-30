@@ -78,9 +78,9 @@ is($conn, 6,                'connect success called proper callback');
 is($sb->state, 'connected', '... and state is up-to-date');
 is($sb->info,  $$, '... and the connected information is consistent');
 
-dies_ok sub {
+lives_ok sub {
   $sb->subscribe({ topic => '/test3' })
-}, 'Subscribe failed';
+}, 'Subscribe call ok';
 is($sb->error, EPIPE,  '... error flag is the expected');
 is($sb->state, 'idle', '... state is idle as it should');
 ok($we_err,            'Write error callback was called properly');
@@ -126,10 +126,9 @@ is($sb->state, 'connected', '... proper initial state');
 is($conn, 1,                '... proper callback called');
 
 $conn = 0;
-throws_ok
+lives_ok
   sub { $sb->read_error(ECONNRESET) },
-  qr/Read error: /,
-  '';
+  'Call to read_error ok';
 is($conn, -2,               'read error called proper callback');
 is($sb->state, 'idle',      '... and state is up-to-date');
 is($sb->error, ECONNRESET,  '... and the error flag is consistent');

@@ -544,7 +544,7 @@ sub write_error {
   $self->_set_state('write_error');
   $self->_lost_connection;
   
-  croak("Write error: $!");
+  return;
 }
 
 sub read_error {
@@ -555,7 +555,7 @@ sub read_error {
   $self->_set_state('read_error');
   $self->_lost_connection;
   
-  croak("Read error: $!");
+  return;
 }
 
 
