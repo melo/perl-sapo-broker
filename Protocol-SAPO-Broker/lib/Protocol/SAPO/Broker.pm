@@ -569,10 +569,12 @@ sub _set_state {
 }
 
 sub _require_state {
-  my ($self, $req_state) = @_;
+  my $self = shift;
 
   my $cur_state = $self->state;
-  return if $cur_state eq $req_state;
+  for my $state (@_) {
+    return if $cur_state eq $state;
+  }
   
   my $method;
   my $frame = 0;
@@ -581,7 +583,8 @@ sub _require_state {
     $method =~ s/^.+:://;
   } while ($method =~ m/^_/);
   
-  croak("Cannot call '$method()': state is '$cur_state', requires '$req_state', ");
+  my $req_state = join(', ', map { "'$_'" } @_);
+  croak("Cannot call '$method()': state is '$cur_state', requires $req_state, ");
 }
 
 
