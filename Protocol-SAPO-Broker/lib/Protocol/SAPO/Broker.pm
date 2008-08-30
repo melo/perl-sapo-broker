@@ -472,7 +472,7 @@ sub connected {
   my ($self, $info) = @_;
   
   $self->_require_state('connecting');
-  $self->_clear_error;
+  $self->clear_error;
   $self->{info} = $info;
   $self->{buffer} = '';
   $self->{expect} = 0; # N=0 - expects new frame, N > 0 expects N bytes of frame
@@ -497,7 +497,7 @@ sub incoming_data {
   my ($self, $data) = @_;
 
   $self->_require_state('connected');
-  $self->_clear_error;
+  $self->clear_error;
   
   if (!defined($data)) { # EOF
     $self->_set_state('eof');
@@ -587,18 +587,20 @@ sub _require_state {
 
 ### Error handling
 
-sub _set_error {
-  my ($self, $err) = @_;
-  
-  return $! = $self->{error} = $err;
-}
+sub error  { return $_[0]{error} }
 
-sub _clear_error {
+sub clear_error {
   my $self = shift;
   
   delete $self->{error};
 }
 
+
+sub _set_error {
+  my ($self, $err) = @_;
+  
+  return $! = $self->{error} = $err;
+}
 
 ### Callback logic
 
@@ -627,7 +629,6 @@ sub state  { return $_[0]{state} }
 sub host   { return $_[0]{host}  }
 sub port   { return $_[0]{port}  }
 sub info   { return $_[0]{info}  }
-sub error  { return $_[0]{error} }
 
 
 ### XML utils

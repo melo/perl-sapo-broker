@@ -88,6 +88,11 @@ is($we_err, EPIPE,     '... and with the proper error and all');
 is($conn, 5,           'Disconnected callback called correctly');
 
 
+ok($sb->error, 'We have an error');
+$sb->clear_error;
+ok(!defined($sb->error), 'Clear error, clears the error, really');
+
+
 # Error connecting
 $conn = 0;
 $sb = Protocol::SAPO::Broker->new({
