@@ -471,7 +471,7 @@ sub _lost_connection {
 sub connected {
   my ($self, $info) = @_;
   
-  $self->_require_state('connecting');
+  $self->_require_state('connecting', 'reconnecting');
   $self->clear_error;
   $self->{info} = $info;
   $self->{buffer} = '';
@@ -484,7 +484,7 @@ sub connected {
 sub connect_failed {
   my ($self, $error) = @_;
   
-  $self->_require_state('connecting');
+  $self->_require_state('connecting', 'reconnecting');
   $self->_set_error($error);
   $self->_set_state('connect_error');
   $self->_set_state('idle');
