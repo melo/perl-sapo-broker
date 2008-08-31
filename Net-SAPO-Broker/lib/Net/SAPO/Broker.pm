@@ -5,6 +5,7 @@ use strict;
 use base qw( Protocol::SAPO::Broker );
 use IO::Socket::INET;
 use IO::Select;
+use Time::HiRes qw( usleep );
 
 our $VERSION = '0.01';
 
@@ -13,8 +14,9 @@ sub new {
   my $self = $class->SUPER::new({ skip_init => 1 });
 
   $args ||= {};
-  $args->{on_connect} = sub { $self->_do_connect(@_) };
-  $args->{on_send}    = sub { $self->_do_send(@_)    };
+  $args->{on_connect}   = sub { $self->_do_connect(@_)   };
+  $args->{on_reconnect} = sub { $self->_do_reconnect(@_) };
+  $args->{on_send}      = sub { $self->_do_send(@_)      };
   
   $self->init($args);
   
@@ -28,12 +30,14 @@ sub deliver_messages {
   my ($self, $timeout) = @_;
   $timeout ||= 0;
   
-  my $sock = $self->info();
-  
-  my $select = IO::Select->new($sock);
+  my ($sock, $select);
   
   WAIT_FOR_DATA:
   while($self->state eq 'connected') {
+    if (!$sock) {
+      $sock = $self->info();
+      $select = IO::Select->new($sock);
+    }
     last WAIT_FOR_DATA unless $select->can_read($timeout);
     
     my $data;
@@ -48,6 +52,7 @@ sub deliver_messages {
     }
     else {
       $self->incoming_data(undef); # Signal EOF
+      $sock = $select = undef;
     }
   }
   
@@ -73,6 +78,18 @@ sub _do_connect {
   }
   
   $sbp->connected($sock);
+  delete $self->{reconnect_count};
+  
+  return;
+}
+
+sub _do_reconnect {
+  my ($self) = @_;
+  
+  my $retry = ++$self->{reconnect_count};
+  usleep(100000) if $retry >  3;
+  usleep(100000) if $retry >  6;
+  usleep(300000) if $retry > 12;
   
   return;
 }

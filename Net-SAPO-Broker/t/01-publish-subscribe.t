@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More;
+use Test::Most;
 use LWP::UserAgent;
 use Net::SAPO::Broker;
 
@@ -16,9 +16,8 @@ else {
     'Set TEST_SAPO_BROKER ENV with the IP of agent to use for tests';
 }
 
-diag( "Testing Net::SAPO::Broker $Net::SAPO::Broker::VERSION, Perl $], $^X" );
+explain( "Testing Net::SAPO::Broker $Net::SAPO::Broker::VERSION, Perl $], $^X" );
 _cleanup_all_queues();
-
 
 my $sb = Net::SAPO::Broker->new({
   auto_connect => 0,
@@ -26,40 +25,31 @@ my $sb = Net::SAPO::Broker->new({
 ok($sb);
 is($sb->state, 'idle', 'Idle, not connected');
 
-my $r = $sb->publish({
-  topic   => '/test/foo',
-  payload => 'hello world',
-});
-ok($r, "Publish without a connection will fail: $r");
-
 $sb->connect;
 is($sb->state, 'connected', 'User started connection ok');
 
-my ($ukn_payload, $ukn_message);
+my ($ukn_payload, $ukn_message, $soap);
 $sb = Net::SAPO::Broker->new({
-  on_unknown_payload => sub {
-    (undef, $ukn_payload) = @_;
-  },
-  on_unknown_message => sub {
-    (undef, $ukn_message) = @_;
-  },
+  on_unknown_payload => sub { $ukn_payload = $_[1] },
+  on_unknown_message => sub { $ukn_message = $_[1] },
   on_trace_incoming => sub {
-    my (undef, $soap) = @_;
-    diag("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    $soap = $_[1];
+    explain("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
   on_trace_outgoing => sub {
-    my (undef, $soap) = @_;
-    diag("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    $soap = $_[1];
+    explain("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
 });
 ok($sb, 'Seccond connection ok');
 is($sb->state, 'connected', 'Good connection now');
 
-$r = $sb->publish({
-  topic   => '/test/foo',
-  payload => 'hello world',
-});
-ok(!defined($r), 'Publish succeeded');
+lives_ok sub {
+  $sb->publish({
+    topic   => '/test/foo',
+    payload => 'hello world',
+  })
+}, 'Publish succeeded';
 
 # Check for messsages from the publish() method
 $ukn_message = $ukn_payload = undef;
@@ -72,34 +62,28 @@ my $unmatched_c;
 my $ukn_payload_c;
 my $ukn_message_c;
 my $sbc = Net::SAPO::Broker->new({
-  on_unmatched_message => sub {
-    (undef, $unmatched_c) = @_;
-    return;
-  },
-  on_unknown_payload => sub {
-    (undef, $ukn_payload_c) = @_;
-  },
-  on_unknown_message => sub {
-    (undef, $ukn_message_c) = @_;
-  },
-  on_trace_incoming => sub {
-    my (undef, $soap) = @_;
-    diag("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+  on_unmatched_message => sub { $unmatched_c   = $_[3] },
+  on_unknown_payload   => sub { $ukn_payload_c = $_[1] },
+  on_unknown_message   => sub { $ukn_message_c = $_[1] },
+  on_trace_incoming    => sub {
+    $soap = $_[1];
+    explain("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
   on_trace_outgoing => sub {
-    my (undef, $soap) = @_;
-    diag("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    $soap = $_[1];
+    explain("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
 });  
 ok($sbc, 'Consumer connection ok');
 is($sbc->state, 'connected', 'Good connection now');
 
 my $recv_mesg;
-$r = $sbc->subscribe({
-  topic      => '/test/foo',
-  on_message => sub { (undef, $recv_mesg) = @_ },
-});
-ok(!defined($r), 'Subscribe succeeded');
+lives_ok sub {
+  $sbc->subscribe({
+    topic      => '/test/foo',
+    on_message => sub { (undef, $recv_mesg) = @_ },
+  })
+}, 'Subscribe succeeded';
 
 $unmatched_c = $ukn_message_c = $ukn_payload_c = undef;
 $sbc->deliver_messages(1);
@@ -129,10 +113,11 @@ ok(!defined($ukn_payload_c), '... nor any unimplemented payloads');
 ok(!defined($ukn_message_c), '... nor any unimplemented messages');
 
 # Subscribe without callback
-$r = $sbc->subscribe({
-  topic    => '/test/bar',
-});
-ok(!defined($r), 'Subscribe succeeded');
+lives_ok sub {
+  $sbc->subscribe({
+    topic    => '/test/bar',
+  })
+}, 'Subscribe succeeded';
 sleep(1); # Prevent race condition, see tests below
 
 # Clear subscriber status
@@ -296,16 +281,16 @@ my $ta_trace_out;
 my $ta_sb_args = {
   on_trace_incoming => sub {
     my (undef, $soap) = @_;
-    diag("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    explain("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
   on_trace_outgoing => sub {
     my (undef, $soap) = @_;
-    diag("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    explain("Trace OUTGOING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
     $ta_trace_out = $soap;
   },
   on_unmatched_message => sub {
     my (undef, $soap, $dest) = @_;
-    diag("Trace UNMATCHED to $dest: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
+    explain("Trace UNMATCHED to $dest: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
   },
 };
 
@@ -324,7 +309,7 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   ack      => 1,
 #   on_message => sub { $ta_notif1 = $_[1] },
 # });
-# diag("Waiting for OK from subscribe on subscriber 1");
+# explain("Waiting for OK from subscribe on subscriber 1");
 # $sb1->deliver_messages($ta_delay);
 # 
 # $sb0->publish({
@@ -332,7 +317,7 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   payload => $ta_payload,
 # });
 # 
-# diag("Waiting for messages on subscriber 1");
+# explain("Waiting for messages on subscriber 1");
 # $sb1->deliver_messages($ta_delay);
 # ok($ta_notif1, 'Got notification of incoming message on subscriber 1');
 # SKIP: {
@@ -351,7 +336,7 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   on_message => sub { $ta_notif2 = $_[1] },
 # });
 # 
-# diag("Waiting for messages on subscriber 2");
+# explain("Waiting for messages on subscriber 2");
 # $sb2->deliver_messages($ta_delay);
 # ok($ta_notif2, 'Got notification of incoming message on subscriber 2');
 # SKIP: {
@@ -370,7 +355,7 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   on_message => sub { $ta_notif3 = $_[1] },
 # });
 # 
-# diag("Waiting for messages on subscriber 3");
+# explain("Waiting for messages on subscriber 3");
 # $sb3->deliver_messages($ta_delay);
 # ok($ta_notif3, 'Got notification of incoming message on subscriber 3');
 # SKIP: {
@@ -387,14 +372,14 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   on_message => sub { $ta_notif4 = $_[1] },
 # });
 # 
-# diag("Waiting for messages on subscriber 4");
+# explain("Waiting for messages on subscriber 4");
 # $sb4->deliver_messages($ta_delay);
 # ok(!$ta_notif4, 'No notification for subscriber 4, sent to 3 instead');
 # 
-# diag("Subscriber 3 disconnected");
+# explain("Subscriber 3 disconnected");
 # $sb3->disconnect;
 # 
-# diag("Waiting again for messages on subscriber 4");
+# explain("Waiting again for messages on subscriber 4");
 # $sb4->deliver_messages($ta_delay);
 # ok(!$ta_notif4, "No notification for subscriber 4, queue didn't notice 3 died");
 # 
@@ -405,7 +390,7 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   on_message => sub { $ta_notif5 = $_[1] },
 # });
 # 
-# diag("Waiting for messages on subscriber 5");
+# explain("Waiting for messages on subscriber 5");
 # $sb5->deliver_messages($ta_delay);
 # ok($ta_notif5, 'New poller, so consumer 5 got it instead of 4');
 # SKIP: {
@@ -431,7 +416,7 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   );
 # }
 # 
-# diag("Waiting again for messages on subscriber 4");
+# explain("Waiting again for messages on subscriber 4");
 # $sb4->deliver_messages($ta_delay);
 # ok(!$ta_notif4, "No notification for subscriber 4, still nothing there");
 # 
@@ -442,7 +427,7 @@ my $sb6 = Net::SAPO::Broker->new($ta_sb_args);
 #   on_message => sub { $ta_notif6 = $_[1] },
 # });
 # 
-# diag("Waiting for messages on subscriber 6");
+# explain("Waiting for messages on subscriber 6");
 # $sb6->deliver_messages($ta_delay);
 # ok(!$ta_notif6, 'No notification for subscriber 6, message was acked by 5');
 

@@ -3,7 +3,7 @@ abstract: 'The great new Net::SAPO::Broker!'
 author:
   - 'Pedro Melo, C<< <melo at cpan.org> >>'
 distribution_type: module
-generated_by: 'Module::Install version 0.760'
+generated_by: 'Module::Install version 0.76'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -17,6 +17,8 @@ requires:
   Carp::Clan: 0
   Errno: 0
   Protocol::SAPO::Broker: 0.01
+  Test::Most: 0
+  Time::HiRes: 0
 resources:
   license: http://dev.perl.org/licenses/
   repository: http://github.com/melo/perl-sapo-broker
