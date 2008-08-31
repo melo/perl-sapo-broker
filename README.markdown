@@ -51,7 +51,9 @@ Protocol::SAPO::Broker
  * Add auto_reconnect
  * Document public API
  * Document implementation API
-
+ * Disconnect should be a two-step process: init disconnect, and a impl callback disconnected()
+ * Add impl_ prefix to all implementation callbacks
+ * add tests for calls to connect() and connect_error() while in 'reconnecting'
 
 Net::SAPO::Broker
 -----------------
