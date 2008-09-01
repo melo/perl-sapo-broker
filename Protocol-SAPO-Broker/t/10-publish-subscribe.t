@@ -180,7 +180,8 @@ is($sb_consumer->info, $$ % 13,        '... proper connection state');
 # Subscribe a topic
 lives_ok sub {
   $sb_consumer->subscribe({
-    topic => '/test2',
+    topic      => '/test2',
+    on_message => sub {},
   })
 }, 'Subscribe ok';
 like(
@@ -198,14 +199,18 @@ like(
   qr{<b:DestinationType>TOPIC</b:DestinationType>},
   '... correct type TOPIC',
 );
+my $sb_c_subs = $sb_consumer->{subs};
+is(ref($sb_c_subs), 'HASH', 'Proper type for subscriptions registry');
+is(keys(%$sb_c_subs), 1, '... with the correct number of records');
 
 
 # Subscribe a topic with ack
 my $ack_error;
 lives_ok sub {
   $sb_consumer->subscribe({
-    topic    => '/test2',
-    on_error => sub { $ack_error = $_[1] },
+    topic      => '/test2',
+    on_error   => sub { $ack_error = $_[1] },
+    on_message => sub {},
   })
 }, 'Subscribe ok';
 like(
@@ -245,6 +250,7 @@ lives_ok sub {
   $sb_consumer->subscribe({
     topic    => '/test2',
     as_queue => 'queue3',
+    on_message => sub {},
   })
 }, 'Subscribe ok';
 like(
@@ -270,6 +276,7 @@ lives_ok sub {
     topic    => '/test2',
     as_queue => 'queue3',
     ack      => 1,
+    on_message => sub {},
   })
 }, 'Subscribe ok';
 like(
@@ -678,6 +685,41 @@ is($notif2->payload, "$$ $$",      '... with proper payload');
 is($notif2->topic, '/double-take', '... with correct topic');
 is($notif2->id, '1234',            '... and expected id');
 is($notif1, $notif2, 'Actually they are the same notification');
+
+
+# Reconnect must recover subscriptions
+
+my $b_list_payload;
+my $sb_r = Protocol::SAPO::Broker->new({
+  on_connect => sub { $_[0]->connected($$ % 13) },
+  on_send    => sub { $msg_s = $_[2]            },
+  on_state_connected => sub {
+    my ($my_sb) = @_;
+    
+    $my_sb->subscribe({
+      topic => 'a-list',
+      on_message => sub {},
+    });
+    $my_sb->subscribe({
+      topic => 'b-list',
+      on_message => sub { $b_list_payload = $_[1]->payload },
+    });
+    $my_sb->subscribe({
+      topic    => 'a-list',
+      as_queue => 'q',
+      on_message => sub {},
+    });
+  },
+});
+
+my $subs = $sb_r->{subs};
+is(keys(%$subs), 3, 'Three active subscriptions');
+lives_ok sub {
+  $sb_consumer->incoming_data(undef)
+}, "Simulated EOF didn't die";
+is($sb_consumer->state, 'connected', '... and reconnect went well');
+$subs = $sb_r->{subs};
+is(keys(%$subs), 3, 'Got my three active subscriptions back');
 
 
 #######

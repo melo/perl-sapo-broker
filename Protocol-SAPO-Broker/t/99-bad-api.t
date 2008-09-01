@@ -103,6 +103,9 @@ throws_ok sub { $sb->subscribe({ topic => '' }) },
 throws_ok sub { $sb->subscribe({ topic => '/test', as_queue => '' }) },
           qr/Missing valid parameter 'as_queue'/,
           '... empty queue name, dies properly';
+throws_ok sub { $sb->subscribe({ topic => '/test', as_queue => '1' }) },
+          qr/Missing required callback 'on_message'/,
+          '... missing on_message hook, dies properly';
 throws_ok sub { $sb->subscribe({ topic => '/test', on_message => '' }) },
           qr/Parameter 'on_message' must be a CODE ref, /,
           '... non-CODE-ref callback, dies properly';

@@ -79,7 +79,10 @@ is($sb->state, 'connected', '... and state is up-to-date');
 is($sb->info,  $$, '... and the connected information is consistent');
 
 lives_ok sub {
-  $sb->subscribe({ topic => '/test3' })
+  $sb->subscribe({
+    topic      => '/test3',
+    on_message => sub {},
+  })
 }, 'Subscribe call ok';
 is($sb->error, EPIPE,  '... error flag is the expected');
 is($sb->state, 'idle', '... state is idle as it should');

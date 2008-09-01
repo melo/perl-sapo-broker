@@ -106,6 +106,8 @@ sub subscribe {
   
   croak("Missing required parameter 'topic', ")
     unless $args->{topic};
+  croak("Missing required callback 'on_message', ")
+    unless $args->{on_message};
 
   return $self->_send_message({
     %$args,
@@ -219,9 +221,9 @@ sub _parse_common_args {
   # Activate on_message hooks
   if (exists $clean{dest_name}) {
     my $dest_name = $clean{dest_name};
-    if (my $cb = delete $clean{on_message}) {
+    if (exists $clean{on_message}) {
       my $subs = $self->{subs}{$dest_name} ||= [];
-      push @$subs, $cb;
+      push @$subs, $clean{on_message};
     }
   }
 
