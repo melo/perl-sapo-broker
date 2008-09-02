@@ -124,8 +124,7 @@ sub _do_read {
       $self->read_error($!);
     }
     elsif ($r) {
-      $r = $self->incoming_data($data);
-      croak("Error in frame from network: $r") if $r;
+      $self->incoming_data($data);
     }
     else {
       $self->incoming_data(undef); # Signal EOF
