@@ -97,9 +97,9 @@ sub _do_reconnect {
 sub _do_send {
   my ($self, $sbp, $sock, $msg) = @_;
   my $status = 0; # 0 == OK, I'm an optimist
-  
+  local $SIG{PIPE} = 'IGNORE';
+
   while(1) {
-    Carp::confess('wtf, no sock?') unless $sock;
     my $r = $sock->syswrite($msg);
     last if $r && $r == length($msg);
     
