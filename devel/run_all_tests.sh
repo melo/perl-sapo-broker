@@ -2,13 +2,12 @@
 
 export PERL5LIB=`pwd`/Protocol-SAPO-Broker/lib
 
-(
-  cd Protocol-SAPO-Broker
-  prove -l -v t/[0-9]*
-)
+if [ -z "$TEST_USE_HTML_REPORT"] ; then
+	prove_cmd='prove -l -m -Q --formatter=TAP::Formatter::HTML > output.html ; open output.html'
+else
+  prove_cmd='prove -l -v'
+fi
 
-(
-  cd Net-SAPO-Broker
-  prove -l -v t/0*
-)
-
+for dir in Protocol-SAPO-Broker Net-SAPO-Broker ; do
+  sh -c "cd $dir; $prove_cmd"
+done
