@@ -17,7 +17,7 @@ sub new {
   $args ||= {};
   $args->{on_connect}   = sub { my $sb = shift; $sb->_do_connect(@_)   };
   $args->{on_reconnect} = sub { my $sb = shift; $sb->_do_reconnect(@_) };
-  $args->{on_send}      = sub { my $sb = shift; $sb->_do_send(@_)      };
+  $args->{on_send}      = sub { my $sb = shift; $sb->_do_write(@_)     };
   
   $self->init($args);
   
@@ -81,7 +81,7 @@ sub _do_reconnect {
   return;
 }
 
-sub _do_send {
+sub _do_write {
   my ($self, $msg) = @_;
   my $status = 0; # 0 == OK, I'm an optimist
   local $SIG{PIPE} = 'IGNORE';
