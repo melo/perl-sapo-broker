@@ -82,12 +82,13 @@ sub _do_reconnect {
 }
 
 sub _do_send {
-  my ($self, $sock, $msg) = @_;
+  my ($self, $msg) = @_;
   my $status = 0; # 0 == OK, I'm an optimist
   local $SIG{PIPE} = 'IGNORE';
 
   WRITE:
   while(1) {
+    my $sock = $self->info;
     my $r = $sock->syswrite($msg);
     last if $r && $r == length($msg);
     
