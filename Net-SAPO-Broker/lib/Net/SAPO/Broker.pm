@@ -38,7 +38,7 @@ sub deliver_messages {
 
     last WAIT_FOR_DATA unless $select->can_read($timeout);
 
-    $self->_do_read($sock);    
+    $self->_do_read();
   }
   
   return;
@@ -86,7 +86,7 @@ sub _do_write {
   my $status = 0; # 0 == OK, I'm an optimist
   local $SIG{PIPE} = 'IGNORE';
 
-  $self->_do_read($self->info);
+  $self->_do_read();
   
   WRITE:
   while(1) {
@@ -113,11 +113,12 @@ sub _do_write {
 }
 
 sub _do_read {
-  my ($self, $sock) = @_;
+  my ($self) = @_;
   
   READ:
   while (1) {
     my $data;
+    my $sock = $self->info;
     my $r = $sock->sysread($data, 32_000);
 
     if (!defined($r)) {
