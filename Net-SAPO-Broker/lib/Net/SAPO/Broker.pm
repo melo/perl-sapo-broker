@@ -86,14 +86,21 @@ sub _do_send {
   my $status = 0; # 0 == OK, I'm an optimist
   local $SIG{PIPE} = 'IGNORE';
 
+  WRITE:
   while(1) {
     my $r = $sock->syswrite($msg);
     last if $r && $r == length($msg);
     
     if (! defined($r)) {
+      if ($!{EWOULDBLOCK}) {
+        my $select = IO::Select->new($sock);
+        $select->can_write();
+        next WRITE;
+      }
+      
       $sbp->write_error($!);
       $status = $!;
-      last;
+      last WRITE;
     }
     
     $msg = substr($msg, $r);
