@@ -296,7 +296,7 @@ sub _send_message {
   # wire-level frame: lenght prefix + payload
   substr( $soap_msg, 0, 0 ) = pack( 'N', length($soap_msg) );
   
-  $self->_callback('send', $self->{info}, $soap_msg);
+  $self->_callback('send', $soap_msg);
   return;
 }
 

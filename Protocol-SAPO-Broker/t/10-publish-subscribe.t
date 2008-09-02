@@ -14,7 +14,7 @@ my $sb = Protocol::SAPO::Broker->new({
   host => '127.0.0.2',
   port => '2233',
   on_connect   => sub { $_[0]->connected($$) },
-  on_send      => sub { $msg = $_[2]         },
+  on_send      => sub { $msg = $_[1]         },
 });
 ok($sb, 'Created a Protocol::SAPO::Broker instance with some paremeters');
 is($sb->host,  '127.0.0.2', '... with correct given host');
@@ -156,7 +156,7 @@ my $sb_consumer = Protocol::SAPO::Broker->new({
   host       => '127.0.0.2',
   port       => '2233',
   on_connect => sub { $_[0]->connected($$ % 13) },
-  on_send    => sub { $msg_s = $_[2]            },
+  on_send    => sub { $msg_s = $_[1]            },
   on_unmatched_message => sub {
     (undef, $missed_to, $missed_dest, $missed_pay, $xdoc) = @_;
   },
@@ -692,7 +692,7 @@ is($notif1, $notif2, 'Actually they are the same notification');
 my $b_list_payload;
 my $sb_r = Protocol::SAPO::Broker->new({
   on_connect => sub { $_[0]->connected($$ % 13) },
-  on_send    => sub { $msg_s = $_[2]            },
+  on_send    => sub { $msg_s = $_[1]            },
   on_state_connected => sub {
     my ($my_sb) = @_;
     
