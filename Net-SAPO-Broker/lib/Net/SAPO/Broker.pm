@@ -83,7 +83,6 @@ sub _do_reconnect {
 
 sub _do_write {
   my ($self, $msg) = @_;
-  my $status = 0; # 0 == OK, I'm an optimist
   local $SIG{PIPE} = 'IGNORE';
 
   $self->_do_read();
@@ -102,14 +101,13 @@ sub _do_write {
       }
       
       $self->write_error($!);
-      $status = $!;
       last WRITE;
     }
     
     $msg = substr($msg, $r);
   }
   
-  return $status;
+  return;
 }
 
 sub _do_read {
