@@ -9,5 +9,5 @@ else
 fi
 
 for dir in Protocol-SAPO-Broker Net-SAPO-Broker ; do
-  sh -c "cd $dir; $prove_cmd"
+  sh -c "cd $dir && perl Makefile.PL && make && $prove_cmd"
 done
