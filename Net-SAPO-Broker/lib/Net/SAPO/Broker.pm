@@ -86,6 +86,8 @@ sub _do_send {
   my $status = 0; # 0 == OK, I'm an optimist
   local $SIG{PIPE} = 'IGNORE';
 
+  $self->_do_read($self->info);
+  
   WRITE:
   while(1) {
     my $sock = $self->info;
