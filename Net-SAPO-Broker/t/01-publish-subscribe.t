@@ -77,11 +77,11 @@ my $sbc = Net::SAPO::Broker->new({
 ok($sbc, 'Consumer connection ok');
 is($sbc->state, 'connected', 'Good connection now');
 
-my $recv_mesg;
+my $notif;
 lives_ok sub {
   $sbc->subscribe({
     topic      => '/test/foo',
-    on_message => sub { (undef, $recv_mesg) = @_ },
+    on_message => sub { $notif = $_[1] },
   })
 }, 'Subscribe succeeded';
 
@@ -106,45 +106,14 @@ ok(!defined($ukn_payload), '... nor unknown payloads');
 # Waits for messages and delivers it
 # It will wait at most 1 seconds
 $sbc->deliver_messages(1);
-ok($recv_mesg, "Got a message and it was matched");
-is($recv_mesg->payload, $$,  '... and it has the proper payload');
+ok($notif, "Got a message and it was matched");
+is($notif->payload, $$,  '... and it has the proper payload');
 ok(!defined($unmatched_c),   '... and we didnt receive unmatched messages');
 ok(!defined($ukn_payload_c), '... nor any unimplemented payloads');
 ok(!defined($ukn_message_c), '... nor any unimplemented messages');
 
-# Subscribe without callback
-lives_ok sub {
-  $sbc->subscribe({
-    topic    => '/test/bar',
-  })
-}, 'Subscribe succeeded';
-sleep(1); # Prevent race condition, see tests below
-
-# Clear subscriber status
-$recv_mesg = $unmatched_c = $ukn_message_c = $ukn_payload_c = undef;
-
-# Publish something on bar 
-$sb->publish({
-  topic   => '/test/bar',
-  payload => $$, # PID
-});
-
-# Check for messsages from the publish() method
-$ukn_message = $ukn_payload = undef;
-$sb->deliver_messages(1);
-ok(!defined($ukn_message), 'No unknown messages after publish');
-ok(!defined($ukn_payload), '... nor unknown payloads');
-
-# Waits for messages and delivers it
-# It will wait at most 1 seconds
-$sbc->deliver_messages(1);
-ok($unmatched_c, "Got a match caugth by the general handler");
-is($unmatched_c, $$, '... and it has the proper payload');
-ok(!defined($recv_mesg), '... and we didnt receive matched messages');
-ok(!defined($ukn_payload_c), 'No unimplemented messages');
-
 # Clear status
-$recv_mesg = $unmatched_c = undef;
+$notif = $unmatched_c = undef;
 
 # Publish something on bar 
 $sb->publish({
@@ -165,15 +134,15 @@ ok(!defined($ukn_payload), '... nor unknown payloads');
 
 # Waits for messages and delivers it
 # It will wait at most 1 seconds
+$notif = $ukn_message_c = $ukn_payload_c = undef;
 $sbc->deliver_messages(1);
-ok($unmatched_c, "Got a match caugth by the general handler");
-is($unmatched_c, $$, '... and it has the proper payload');
-ok($recv_mesg, "Got a match caugth by the specific handler");
-is($recv_mesg->payload, $$,  '... and it has the proper payload');
+ok(!defined($unmatched_c), "No unmatched messages");
 ok(!defined($ukn_payload_c), 'No unimplemented messages');
+ok($notif, "Got a match caugth by the specific handler");
+is($notif->payload, $$,  '... and it has the proper payload');
 
 # Clear status
-$recv_mesg = $ukn_message = undef;
+$notif = $ukn_message = undef;
 
 # Publish something on foo and bar with ack's on
 $sb->publish({
@@ -204,12 +173,12 @@ is($suc_id, $my_id, '... with the correct topic');
 
 # Waits for messages and delivers it
 # It will wait at most 1 seconds
+$notif = $unmatched_c = $ukn_payload_c = undef;
 $sbc->deliver_messages(1);
-ok($unmatched_c, "Got a match caugth by the general handler");
-is($unmatched_c, $$, '... and it has the proper payload');
-ok($recv_mesg, "Got a match caugth by the specific handler");
-is($recv_mesg->payload, $$, '... and it has the proper payload');
+ok(!defined($unmatched_c), "No unmatched messages");
 ok(!defined($ukn_payload_c), 'No unimplemented messages');
+ok($notif, "Got a match caugth by the specific handler");
+is($notif->payload, $$, '... and it has the proper payload');
 
 # Test race condition does not occour with ack's
 TODO: {
@@ -219,16 +188,16 @@ TODO: {
     topic    => '/test/ypto',
     as_queue => 'q',
     wait_for_confirmation => 1,
-    on_message => sub { (undef, $recv_mesg) = @_ },
+    on_message => sub { $notif = $_[1] },
   });
   $sb->publish({
     topic => '/test/xpto',
     payload => $$,
   });
 
-  $recv_mesg = undef;
+  $notif = undef;
   $sbc->deliver_messages(1);
-  ok(defined($recv_mesg), 'Quick subscribe with confirmation + publish: no missed messages');
+  ok(defined($notif), 'Quick subscribe with confirmation + publish: no missed messages');
 }
 
 # Test TOPIC_AS_QUEUE deliverires
@@ -236,7 +205,7 @@ $sbc->subscribe({
   topic      => '/test/taq',
   as_queue   => 'taq1',
   on_message => sub {
-    (undef, $recv_mesg) = @_;
+    $notif = $_[1];
   },
   ack_id => 'omfg!',
   on_success => sub {
@@ -261,15 +230,14 @@ $sb->deliver_messages(1);
 ok($suc_id, 'Got a success message to our publish');
 is($suc_id, 'omfg!', '... with the expected ID');
 
-$recv_mesg = undef;
+$notif = undef;
 $sbc->deliver_messages(1);
-ok($recv_mesg, 'Subscriber as queue got 1 message');
-is($recv_mesg->payload, "$$ $$",          '... with proper payload');
-is($recv_mesg->topic,   '/test/taq',      '... and with proper topic');
-is($recv_mesg->matched, 'taq1@/test/taq', '... and with proper topic');
+ok($notif, 'Subscriber as queue got 1 message');
+is($notif->payload, "$$ $$",          '... with proper payload');
+is($notif->topic,   '/test/taq',      '... and with proper topic');
+is($notif->matched, 'taq1@/test/taq', '... and with proper topic');
 
 # Test Ack messages             
-$ENV{TEST_SAPO_BROKER_TRACE} = 1;
 my $ta_topic    = '/test/taq/ack'; 
 my $ta_queue_id = "taq-$$"; 
 my $ta_queue    = "$ta_queue_id\@$ta_topic";
