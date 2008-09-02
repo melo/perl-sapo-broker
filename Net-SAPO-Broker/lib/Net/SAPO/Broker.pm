@@ -5,6 +5,7 @@ use strict;
 use base qw( Protocol::SAPO::Broker );
 use IO::Socket::INET;
 use IO::Select;
+use Errno qw( EWOULDBLOCK );
 use Time::HiRes qw( usleep );
 
 our $VERSION = '0.01';
@@ -30,30 +31,14 @@ sub deliver_messages {
   my ($self, $timeout) = @_;
   $timeout ||= 0;
   
-  my ($sock, $select);
-  
   WAIT_FOR_DATA:
   while($self->state eq 'connected') {
-    if (!$sock) {
-      $sock = $self->info();
-      $select = IO::Select->new($sock);
-    }
+    my $sock = $self->info();
+    my $select = IO::Select->new($sock);
+
     last WAIT_FOR_DATA unless $select->can_read($timeout);
-    
-    my $data;
-    my $r = $sock->sysread($data, 32_000);
-    
-    if (!defined($r)) {
-      $self->read_error($!);
-    }
-    elsif ($r) {
-      $r = $self->incoming_data($data);
-      croak("Error in frame from network: $r") if $r;
-    }
-    else {
-      $self->incoming_data(undef); # Signal EOF
-      $sock = $select = undef;
-    }
+
+    $self->_do_read($sock);    
   }
   
   return;
@@ -77,6 +62,8 @@ sub _do_connect {
     return;
   }
   
+  $sock->blocking(0);
+
   $sbp->connected($sock);
   delete $self->{reconnect_count};
   
@@ -113,6 +100,31 @@ sub _do_send {
   }
   
   return $status;
+}
+
+sub _do_read {
+  my ($self, $sock) = @_;
+  
+  READ:
+  while (1) {
+    my $data;
+    my $r = $sock->sysread($data, 32_000);
+
+    if (!defined($r)) {
+      last READ if $!{EWOULDBLOCK};
+      $self->read_error($!);
+    }
+    elsif ($r) {
+      $r = $self->incoming_data($data);
+      croak("Error in frame from network: $r") if $r;
+    }
+    else {
+      $self->incoming_data(undef); # Signal EOF
+      last READ;
+    }
+  }
+  
+  return;
 }
 
 
