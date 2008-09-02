@@ -15,9 +15,9 @@ sub new {
   my $self = $class->SUPER::new({ skip_init => 1 });
 
   $args ||= {};
-  $args->{on_connect}   = sub { $self->_do_connect(@_)   };
-  $args->{on_reconnect} = sub { $self->_do_reconnect(@_) };
-  $args->{on_send}      = sub { $self->_do_send(@_)      };
+  $args->{on_connect}   = sub { my $sb = shift; $sb->_do_connect(@_)   };
+  $args->{on_reconnect} = sub { my $sb = shift; $sb->_do_reconnect(@_) };
+  $args->{on_send}      = sub { my $sb = shift; $sb->_do_send(@_)      };
   
   $self->init($args);
   
@@ -48,7 +48,7 @@ sub deliver_messages {
 ### Hooks
 
 sub _do_connect {
-  my ($self, $sbp, $host, $port) = @_;
+  my ($self, $host, $port) = @_;
   
   my $sock = IO::Socket::INET->new(
     PeerHost => $host,
@@ -58,13 +58,13 @@ sub _do_connect {
   );
   
   if (!$sock) {
-    $sbp->connect_failed($!);
+    $self->connect_failed($!);
     return;
   }
   
   $sock->blocking(0);
 
-  $sbp->connected($sock);
+  $self->connected($sock);
   delete $self->{reconnect_count};
   
   return;
@@ -82,7 +82,7 @@ sub _do_reconnect {
 }
 
 sub _do_send {
-  my ($self, $sbp, $sock, $msg) = @_;
+  my ($self, $sock, $msg) = @_;
   my $status = 0; # 0 == OK, I'm an optimist
   local $SIG{PIPE} = 'IGNORE';
 
@@ -98,7 +98,7 @@ sub _do_send {
         next WRITE;
       }
       
-      $sbp->write_error($!);
+      $self->write_error($!);
       $status = $!;
       last WRITE;
     }
