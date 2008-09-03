@@ -13,6 +13,24 @@ __PACKAGE__->mk_ro_accessors(qw(
   dropbox_path dropbox_enabled dropbox_interval
 ));
 
+sub matches {
+  my ($self, $filters) = @_;
+  
+  my %filters = %{$filters || {}};
+  while (my ($f, $v) = each %filters) {
+    if (!defined $v) {
+      return 0 if exists $self->{$f} && defined($self->{$f});
+    }
+    else {
+      return 0 unless exists  $self->{$f};
+      return 0 unless defined $self->{$f};
+      return 0 if $self->{$f} ne $v;
+    }
+  }
+  
+  return 1;
+}
+
 
 =head1 NAME
 

@@ -69,6 +69,7 @@ App::SAPO::Broker::AgentMap
 ---------------------------
 
  * deal properly with the <statistics /> section
+ * add more tests for App::SAPO::Broker::Agent::matches()
 
 
 AnyEvent::SAPO::Broker
