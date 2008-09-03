@@ -7,7 +7,7 @@ The main logic is in Protocol::SAPO::Broker Perl module, and the others like Net
 
 This allows us to write AnyEvent::SAPO::Broker, Danga::SocketX::SAPO::Broker and even POE::Component::SAPO::Broker using the same tested state machine.
 
-Also included is the App::SAPO::Broker::Utils that include a command line tool, `sapo-broker-client`, that allows you to test your SAPO Broker cloud.
+Also included is the App::SAPO::Broker that include a command line tool, `sapo-broker-client`, that allows you to test your SAPO Broker cloud.
 
 
 Status
@@ -77,8 +77,8 @@ Danga::SocketX::SAPO::Broker
  * Write it :)
 
 
-App::SAPO::Broker::Utils
-========================
+App::SAPO::Broker
+=================
 
 sapo-broker-client
 ------------------
