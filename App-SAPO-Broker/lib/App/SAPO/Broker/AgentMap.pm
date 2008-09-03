@@ -2,8 +2,13 @@ package App::SAPO::Broker::AgentMap;
 
 use warnings;
 use strict;
+use base qw( Class::Accessor::Fast );
 
 our $VERSION = '0.01';
+
+__PACKAGE__->mk_ro_accessors(qw(
+  worldmap_path agent_config_path
+));
 
 
 =head1 NAME

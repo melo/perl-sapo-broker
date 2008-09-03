@@ -3,7 +3,7 @@ abstract: 'Command line utilities to use with SAPO Broker'
 author:
   - 'Pedro Melo, C<< <melo at cpan.org> >>'
 distribution_type: module
-generated_by: 'Module::Install version 0.76'
+generated_by: 'Module::Install version 0.760'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -15,6 +15,7 @@ no_index:
     - t
 requires:
   Benchmark: 0
+  Class::Accessor::Fast: 0
   Getopt::Long: 0
   LWP::UserAgent: 0
   Net::SAPO::Broker: 0.01
