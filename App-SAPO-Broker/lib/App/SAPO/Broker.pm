@@ -8,7 +8,7 @@ our $VERSION = '0.01';
 
 =head1 NAME
 
-App::SAPO::Broker - The great new App::SAPO::Broker!
+App::SAPO::Broker - Command line utilities to use with SAPO Broker
 
 =head1 VERSION
 
@@ -18,14 +18,7 @@ Version 0.01
 
 =head1 SYNOPSIS
 
-Quick summary of what the module does.
-
-Perhaps a little code snippet.
-
-    use App::SAPO::Broker;
-
-    my $foo = App::SAPO::Broker->new();
-    ...
+This module is not to be used directly. See L<sapo-broker-client> and others
 
 
 =head1 AUTHOR

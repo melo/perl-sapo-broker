@@ -1,12 +1,8 @@
 use inc::Module::Install;
 
 # Define metadata
-name         'App-SAPO-Broker-Utils';
-abstract     'Command line utilities to use with SAPO Broker';
-author       'Pedro Melo <melo@simplicidade.org>';
-version      '0.01';
-license      'perl';
-perl_version '5.006';
+name     'App-SAPO-Broker';
+all_from 'lib/App/SAPO/Broker.pm';
 
 # scripts mostly
 install_script "sapo-broker-client";
