@@ -10,6 +10,39 @@ __PACKAGE__->mk_ro_accessors(qw(
   worldmap_path agent_config_path
 ));
 
+sub new {
+  my ($class, $args) = @_;
+  
+  $args->{agents} = {};
+  
+  return $class->SUPER::new($args);
+}
+
+
+################
+# Agent database
+
+sub agent_count {
+  my $self = shift;
+  
+  return scalar($self->agents);
+}
+
+sub agents {
+  my $self = shift;
+  
+  return values %{$self->{agents}};
+}
+
+sub agent {
+  my ($self, $name) = @_;
+  my $agents = $self->{agents};
+
+  return $agents->{$name} if exists $agents->{$name};
+  return undef;
+}
+
+
 
 =head1 NAME
 
