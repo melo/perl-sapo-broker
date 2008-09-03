@@ -56,18 +56,15 @@ is($am->agent_config_path, '/path/to/config',  'Correct config path');
 
 is($am->agent_count, 4, 'Correct number of agents ');
 
-foreach my $agent_name ($am->agents) {
-  my $cfg = $am->agent($agent_name);
+foreach my $agent ($am->agents) {
+  is($agent->client_http_port, 3280, "HTTP client port for $agent_name ok");
+  is($agent->workspace_path, '/path/to/work', "Workspace for $agent_name ok");
+  is($agent->dropbox_interval, 5, "Dropbox interval for $agent_name ok");
   
-  is($cfg->client_http_port, 3280, "HTTP client port for $agent_name ok");
-  is($cfg->workspace_path, '/path/to/work', "Workspace for $agent_name ok");
-  is($cfg->dropbox_interval, 5, "Dropbox interval for $agent_name ok");
-  
-  my $ip = $cfg->ip;
-  my $peer_port = $cfg->peer_port;
+  my $ip = $agent->ip;
+  my $peer_port = $agent->peer_port;
   my $name = "agent-$ip-$peer_port";
-  is($agent_name, $name, 'Agent name from agents() is consistent');
-  is($cfg->name, $name, 'Agent name is in the proper format');
+  is($agent->name, $name, 'Agent name is in the proper format');
 }
 
 my (@cfg) = $am->agents({ ip => 127.0.0.1 });

@@ -105,3 +105,37 @@ foreach my $patt (@patts) {
 }
 
 
+### Test _expand_vars function
+
+@patts = (
+  [
+    { f1 => 'aa %%f2%% %%f3%%', f2 => 'bb', f3 => 'cc' },
+    { f1 => 'aa bb cc',         f2 => 'bb', f3 => 'cc' },
+  ],
+  [
+    { f1 => 'aa %% f2%% %%f3%%', f2 => 'bb', f3 => 'cc' },
+    { f1 => 'aa %% f2%% cc',     f2 => 'bb', f3 => 'cc' },
+  ],
+  [
+    { f1 => 'aa %%f2 %% %%f3%%', f2 => 'bb', f3 => 'cc' },
+    { f1 => 'aa %%f2 %% cc',     f2 => 'bb', f3 => 'cc' },
+  ],
+  [
+    { f1 => 'aa %% %% %%f3%%', f2 => 'bb', f3 => 'cc' },
+    { f1 => 'aa %% %% cc',     f2 => 'bb', f3 => 'cc' },
+  ],
+  [
+    { f1 => 'aa %  %% %%f3%%', f2 => 'bb', f3 => 'cc' },
+    { f1 => 'aa %  %% cc',     f2 => 'bb', f3 => 'cc' },
+  ],
+  [
+    { f1 => 'aa %  %%f2%%f3%%', f2 => 'bb', f3 => 'cc' },
+    { f1 => 'aa %  bbf3%%',     f2 => 'bb', f3 => 'cc' },
+  ],
+);
+
+foreach my $patt (@patts) {
+  my ($try, $match) = @$patt;
+  App::SAPO::Broker::AgentMap->_expand_vars($try);
+  cmp_deeply($try, $match);
+}

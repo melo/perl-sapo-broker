@@ -15,7 +15,7 @@ __PACKAGE__->mk_ro_accessors(qw(
 sub new {
   my ($class, $args) = @_;
   
-  $args->{agents} = {};
+  $args->{agents} ||= {};
   
   return $class->SUPER::new($args);
 }
@@ -71,11 +71,44 @@ sub parse {
       $active_parser = $switch_to if $switch_to;
     }
   }
-  delete $stash->{target};
-
-  # CLEAN $stash
-  
+  $class->_clean_stash($stash);
+    
   return $class->new($stash);  
+}
+
+sub _clean_stash {
+  my ($class, $stash) = @_;
+  
+  delete $stash->{target};
+  delete $stash->{defaults};
+  
+  my $parsed_agents = delete $stash->{agents};
+  my %clean_agents;
+  
+  foreach my $agent (@$parsed_agents) {
+    $class->_expand_vars($agent);
+    
+    $agent = App::SAPO::Broker::Agent->new($agent);
+    die("Missing name on agent\n") unless $agent->name;
+    
+    my $name = $agent->name;
+    die("Duplicate agent named '$name'\n") if exists $clean_agents{$name};
+    
+    $clean_agents{$name} = $agent;
+  }
+  
+  $stash->{agents} = \%clean_agents;
+  
+  return;
+}
+
+sub _expand_vars {
+  my ($class, $agent) = @_;
+  
+  while (my ($k, $v) = each %$agent) {
+    $v =~ s/%%([\w-]+)%%/$agent->{$1} || ''/ge;
+    $agent->{$k} = $v;
+  }
 }
 
 sub _strip_comments {
