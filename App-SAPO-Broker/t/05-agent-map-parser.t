@@ -67,7 +67,7 @@ foreach my $agent ($am->agents) {
   is($agent->name, $name, 'Agent name is in the proper format');
 }
 
-my (@cfg) = $am->agents({ ip => 127.0.0.1 });
+my (@cfg) = $am->agents({ ip => '127.0.0.1' });
 ok(@cfg, 'Found agent for IP 127.0.0.1');
 is(scalar(@cfg), 1, '... a single agent as expected');
 
@@ -87,7 +87,7 @@ is($cfg->dropbox_path,     '/path/to/dropbox',     "Proper dropbox path for agen
 ok($cfg->dropbox_enabled,                          "Dropbox is enabled for agent '$name'");
 is($cfg->dropbox_interval, 5,                      "Proper dropbox interval for agent '$name'");
 
-($cfg) = $am->agents({ ip => 127.0.0.2 });
+($cfg) = $am->agents({ ip => '127.0.0.2' });
 $name = $cfg->name;
 is($cfg->name,             'agent-127.0.0.2-3333', "Proper name for agent '$name'");
 is($cfg->ip,               '127.0.0.2',            "Proper IP for agent '$name'");
@@ -101,10 +101,10 @@ ok($cfg->dropbox_enabled,                          "Dropbox is enabled for agent
 is($cfg->dropbox_interval, 5,                      "Proper dropbox interval for agent '$name'");
 
 
-($cfg) = $am->agents({ ip => 127.0.0.3 });
+($cfg) = $am->agents({ ip => '127.0.0.3' });
 $name = $cfg->name;
-is($cfg->name,             'agent-127.0.0.2-3333', "Proper name for agent '$name'");
-is($cfg->ip,               '127.0.0.2',            "Proper IP for agent '$name'");
+is($cfg->name,             'agent-127.0.0.3-4444', "Proper name for agent '$name'");
+is($cfg->ip,               '127.0.0.3',            "Proper IP for agent '$name'");
 is($cfg->peer_port,        4444,                   "Proper peer_port for agent '$name'");
 is($cfg->client_tcp_port,  4449,                   "Proper client tcp port for agent '$name'");
 is($cfg->client_udp_port,  4449,                   "Proper client udp port for agent '$name'");
@@ -114,10 +114,10 @@ is($cfg->dropbox_path,     '/not/to/dropbox',      "Proper dropbox path for agen
 ok($cfg->dropbox_enabled,                          "Dropbox is enabled for agent '$name'");
 is($cfg->dropbox_interval, 5,                      "Proper dropbox interval for agent '$name'");
 
-($cfg) = $am->agents({ ip => 127.0.0.4 });
+($cfg) = $am->agents({ ip => '127.0.0.4' });
 $name = $cfg->name;
-is($cfg->name,             'agent-127.0.0.2-3333', "Proper name for agent '$name'");
-is($cfg->ip,               '127.0.0.2',            "Proper IP for agent '$name'");
+is($cfg->name,             'agent-127.0.0.4-4444', "Proper name for agent '$name'");
+is($cfg->ip,               '127.0.0.4',            "Proper IP for agent '$name'");
 is($cfg->peer_port,        4444,                   "Proper peer_port for agent '$name'");
 is($cfg->client_tcp_port,  4449,                   "Proper client tcp port for agent '$name'");
 is($cfg->client_udp_port,  4449,                   "Proper client udp port for agent '$name'");

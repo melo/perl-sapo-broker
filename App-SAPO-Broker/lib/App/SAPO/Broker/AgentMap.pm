@@ -31,9 +31,11 @@ sub agent_count {
 }
 
 sub agents {
-  my $self = shift;
-  
-  return values %{$self->{agents}};
+  my ($self, $filters) = @_;
+  my @agents = values %{$self->{agents}};
+
+  return @agents unless $filters;
+  return grep { $_->matches($filters) } @agents;
 }
 
 sub agent {
