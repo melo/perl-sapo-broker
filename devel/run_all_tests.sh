@@ -8,6 +8,6 @@ else
   prove_cmd='prove -l -v'
 fi
 
-for dir in Protocol-SAPO-Broker Net-SAPO-Broker ; do
+for dir in Protocol-SAPO-Broker Net-SAPO-Broker App-SAPO-Broker ; do
   sh -c "cd $dir && perl Makefile.PL && make && $prove_cmd"
 done
