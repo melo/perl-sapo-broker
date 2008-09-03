@@ -65,23 +65,24 @@ Net::SAPO::Broker
  * Make sure they react well to auto_connect and auto_reconnect settings
 
 
+
+
 AnyEvent::SAPO::Broker
-======================
+----------------------
 
  * Write it :)
 
 
 Danga::SocketX::SAPO::Broker
-============================
+----------------------------
 
  * Write it :)
 
 
 App::SAPO::Broker
-=================
+-----------------
 
-sapo-broker-client
-------------------
+### sapo-broker-client ###
 
  * --raw-xml: dumps raw-xml
  * --pretty-xml: dumps raw-xml, prettyfied
@@ -100,14 +101,12 @@ sapo-broker-client
      it does a binary search between the last two values for rate.
 
 
-sapo-broker-top
----------------
+### sapo-broker-top ###
 
  * collect /system/stats and show a top-like interface
 
 
-sapo-broker-startup
--------------------
+### sapo-broker-startup ###
 
  * starts a Agent instance:
    * create config.xml based on command line parameters;
