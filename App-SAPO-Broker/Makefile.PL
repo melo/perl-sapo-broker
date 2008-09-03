@@ -13,6 +13,7 @@ requires 'Getopt::Long'      => 0;
 requires 'Time::HiRes'       => 0;
 requires 'LWP::UserAgent'    => 0;
 requires 'Benchmark'         => 0;
+requires 'IO::String'        => 0;
 requires 'XML::LibXML'       => 0;
 requires 'XML::LibXML::XPathContext' => 0;
 requires 'Class::Accessor::Fast'     => 0;

@@ -1,6 +1,6 @@
 #!perl -T
 
-use Test::Most tests => 1;
+use Test::Most 'no_plan';
 
 BEGIN {
 	use_ok( 'App::SAPO::Broker::AgentMap' );
@@ -9,20 +9,20 @@ BEGIN {
 explain( "Testing App::SAPO::Broker::AgentMap $App::SAPO::Broker::AgentMap::VERSION, Perl $], $^X" );
 
 my $sample_config = q{
-worldmap_path     /path/to/worlmap
-agent_config_path /path/to/config
+worldmap-path     /path/to/worlmap
+agent-config-path /path/to/config
 
 # You can have comments
 defaults
   name "agent-%%ip%%-%%peer_port%%"  # %%name%% is replaced with name var
-  peer_port 3333
+  peer-port 3333
   client-tcp-port 3269
   client-udp-port 3269
   client-http-port 3280
-  workspace_path "/path/to/work"
-  dropbox_path  /path/to/dropbox
-  dropbox_enabled true
-  dropbox_interval 5
+  workspace-path "/path/to/work"
+  dropbox-path  /path/to/dropbox
+  dropbox-enabled true
+  dropbox-interval 5
 
 agent
   ip 127.0.0.1
@@ -32,22 +32,24 @@ agent
 
 # You can have several sets of defaults
 defaults
-  peer_port 4444
+  peer-port 4444
   client-tcp-port 4449     # As you can see above, end-of-line comments
   client-udp-port 4449     # are ok
-  dropbox_path  /not/to/dropbox
+  dropbox-path  /not/to/dropbox
 
 agent
   ip 127.0.0.3
 
 agent
   ip 127.0.0.4
-  dropbox_enabled false
+  dropbox-enabled false
 
 };
 
-my $am = App::SAPO::Broker::AgentMap->new;
-lives_ok sub { $am->parse($sample_config) }, 'Parsed configuration file ok';
+my $am;
+lives_ok sub {
+  $am = App::SAPO::Broker::AgentMap->parse($sample_config); 
+}, 'Parsed configuration file ok';
 
 is($am->worldmap_path,     '/path/to/worlmap', 'Correct worlmap path');
 is($am->agent_config_path, '/path/to/config',  'Correct config path');
