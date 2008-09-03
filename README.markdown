@@ -65,6 +65,10 @@ Net::SAPO::Broker
  * Make sure they react well to auto_connect and auto_reconnect settings
 
 
+App::SAPO::Broker::AgentMap
+---------------------------
+
+ * deal properly with the <statistics /> section
 
 
 AnyEvent::SAPO::Broker
