@@ -1,0 +1,11 @@
+#!/bin/sh
+
+PERL5LIB=`pwd`/Protocol-SAPO-Broker/lib:`pwd`/Net-SAPO-Broker/lib
+export PERL5LIB
+
+prove_cmd='prove -l -v --archive smoker.tgz'
+report_cmd='smolder_report smoker.tgz'
+
+for dir in Protocol-SAPO-Broker Net-SAPO-Broker App-SAPO-Broker ; do
+  sh -c "cd $dir && perl Makefile.PL && make && $prove_cmd && $report_cmd"
+done
