@@ -6,6 +6,10 @@ export PERL5LIB
 prove_cmd='prove -l -v --archive smoker.tgz'
 report_cmd='smolder_report smoker.tgz'
 
+TEST_SAPO_BROKER_HTTP='127.0.0.1:3430'
+TEST_SAPO_BROKER='127.0.0.1:3372'
+export TEST_SAPO_BROKER TEST_SAPO_BROKER_HTTP
+
 for dir in Protocol-SAPO-Broker Net-SAPO-Broker App-SAPO-Broker ; do
   sh -c "cd $dir && perl Makefile.PL && make && $prove_cmd && $report_cmd"
 done
