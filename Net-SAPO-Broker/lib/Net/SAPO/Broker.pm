@@ -211,7 +211,7 @@ L<http://search.cpan.org/dist/Net-SAPO-Broker>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Pedro Melo, all rights reserved.
+Copyright 2008 Pedro Melo.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
