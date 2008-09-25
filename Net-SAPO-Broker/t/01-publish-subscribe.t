@@ -12,6 +12,8 @@ my ($host, $port);
 if ($ENV{TEST_SAPO_BROKER} && $ENV{TEST_SAPO_BROKER_HTTP}) {
   plan 'no_plan';
   ($host, $port) = split(/:/, $ENV{TEST_SAPO_BROKER});
+  ($host) = $host =~ m/^(\d+[.]\d+[.]\d+[.]\d+)$/;
+  ($port) = $port =~ m/^(\d+)$/;
 }
 else {
   plan 'skip_all',
@@ -422,8 +424,9 @@ sub _remove_queue {
   
   my $ua = LWP::UserAgent->new;
   $ua->timeout(30);
+  my ($host_port) = $ENV{TEST_SAPO_BROKER_HTTP} =~ m/^(\d+[.]\d+[.]\d+[.]\d+(:\d+)?)$/;
   
-  my $url = "http://$ENV{TEST_SAPO_BROKER_HTTP}/broker/admin";
+  my $url = "http://$host_port/broker/admin";
   $ua->post($url, Content => "QUEUE:$queue");
 }
 
