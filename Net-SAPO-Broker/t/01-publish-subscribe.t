@@ -8,12 +8,14 @@ use Net::SAPO::Broker;
 
 END { _cleanup_all_queues() }
 
-if ($ENV{TEST_SAPO_BROKER}) {
+my ($host, $port);
+if ($ENV{TEST_SAPO_BROKER} && $ENV{TEST_SAPO_BROKER_HTTP}) {
   plan 'no_plan';
+  ($host, $port) = split(/:/, $ENV{TEST_SAPO_BROKER});
 }
 else {
   plan 'skip_all',
-    'Set TEST_SAPO_BROKER ENV with the IP of agent to use for tests';
+    'Set TEST_SAPO_BROKER *and* TEST_SAPO_BROKER_HTTP ENV ip:port of the agent';
 }
 
 explain( "Testing Net::SAPO::Broker $Net::SAPO::Broker::VERSION, Perl $], $^X" );
@@ -21,6 +23,8 @@ _cleanup_all_queues();
 
 my $sb = Net::SAPO::Broker->new({
   auto_connect => 0,
+  host => $host,
+  port => $port,
 });
 ok($sb);
 is($sb->state, 'idle', 'Idle, not connected');
@@ -30,6 +34,8 @@ is($sb->state, 'connected', 'User started connection ok');
 
 my ($ukn_payload, $ukn_message, $soap);
 $sb = Net::SAPO::Broker->new({
+  host => $host,
+  port => $port,
   on_unknown_payload => sub { $ukn_payload = $_[1] },
   on_unknown_message => sub { $ukn_message = $_[1] },
   on_trace_incoming => sub {
@@ -62,6 +68,8 @@ my $unmatched_c;
 my $ukn_payload_c;
 my $ukn_message_c;
 my $sbc = Net::SAPO::Broker->new({
+  host => $host,
+  port => $port,
   on_unmatched_message => sub { $unmatched_c   = $_[3] },
   on_unknown_payload   => sub { $ukn_payload_c = $_[1] },
   on_unknown_message   => sub { $ukn_message_c = $_[1] },
@@ -247,6 +255,8 @@ my $ta_delay    = 10;
 my $ta_trace_out;
 
 my $ta_sb_args = {
+  host => $host,
+  port => $port,
   on_trace_incoming => sub {
     my (undef, $soap) = @_;
     explain("Trace INCOMING: $soap") if $ENV{TEST_SAPO_BROKER_TRACE};
@@ -413,7 +423,7 @@ sub _remove_queue {
   my $ua = LWP::UserAgent->new;
   $ua->timeout(30);
   
-  my $url = "http://$ENV{TEST_SAPO_BROKER}:3380/broker/admin";
+  my $url = "http://$ENV{TEST_SAPO_BROKER_HTTP}/broker/admin";
   $ua->post($url, Content => "QUEUE:$queue");
 }
 
